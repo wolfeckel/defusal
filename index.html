@@ -314,6 +314,21 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .maptop .cta{width:100%;min-height:56px;font-size:20px;padding:10px 8px}
 .cta.dly{background:#1f5134;color:#d9ffe6;box-shadow:0 6px 0 #0f2a1b}
 .cta[hidden]{display:none}
+/* title screen */
+.tbomb{position:relative;width:min(340px,100%);margin:0 auto 22px;padding:22px 18px 20px;border-radius:24px;
+  background:linear-gradient(160deg,var(--case2),var(--case) 60%);box-shadow:0 2px 0 var(--edge) inset,0 -3px 0 #1a1d20 inset,0 30px 50px -20px rgba(0,0,0,.8),0 6px 0 #15181b;
+  animation:tfloat 3.2s ease-in-out infinite}
+@keyframes tfloat{50%{transform:translateY(-8px) rotate(-.8deg)}}
+.tbomb .logo{margin-bottom:14px;font-size:clamp(44px,13vw,64px);padding:10px 6px}
+.tled{position:absolute;top:12px;right:14px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 14px var(--red);animation:tblink 1s steps(2,jump-none) infinite}
+@keyframes tblink{50%{opacity:.15;box-shadow:none}}
+.tclock{width:fit-content;margin:0 auto 16px;padding:8px 14px;border-radius:10px;background:#0b170e;box-shadow:inset 0 3px 8px #000;
+  font:44px/1 "Share Tech Mono",monospace;color:#46ff8a;text-shadow:0 0 12px rgba(70,255,138,.6)}
+.tclock.low{background:var(--lcd);color:var(--red);text-shadow:0 0 14px rgba(255,59,47,.8)}
+.twires{display:flex;flex-direction:column;gap:9px;padding:0 6px}
+.twires i{display:block;height:11px;border-radius:6px;background:var(--c);box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.3)}
+.twires i:nth-child(2){width:86%;margin-left:7%}.twires i:nth-child(3){width:94%}
+@media(prefers-reduced-motion:reduce){.tbomb,.tled{animation:none}}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -982,6 +997,10 @@ function showOver(m,why){
   if(m==='map')daily=false;
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
+  // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
+  if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
+    text='Cut the wires. Beat the clock.';go='▶ PLAY';
+    if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'SAVE':'PLAY';$('#name').value=S.current;$('#pin').value='';
     if(lbOn())text=S.current?`Your code is ${prof().pin}. Use it with your name to play on another device.`:'Played before on another device? Add your 4-digit code.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
@@ -997,7 +1016,9 @@ function showOver(m,why){
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
-  const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board';alt.textContent=m==='board'?'↻ Refresh':'↻ Replay';
+  const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board'&&m!=='title';alt.textContent=m==='board'?'↻ Refresh':m==='title'?'📅 Daily bomb':'↻ Replay';
+  clearInterval(titleT);if(m==='title'){let s=10;titleT=setInterval(()=>{const c=$('#tclock');if(!c||mode!=='title'){clearInterval(titleT);return}
+    s=s>0?s-1:10;c.textContent='0:'+String(s).padStart(2,'0');c.classList.toggle('low',s<=3)},1000)}
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
   $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#ranks').innerHTML='';$('#go').textContent=go;$('#go').hidden=m==='map';o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
@@ -1028,13 +1049,15 @@ $('#go').onclick=()=>{
     if(changing){showOver('map');return}
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
+  if(mode==='title'){if(S.current)toBrief(Math.min(prof().unlocked,LEVELS.length-1));else showOver('name');return}
   if(mode==='board'){goBack();return}
   if(mode==='win'&&daily){boardOrigin=snap();boardTab='daily';showOver('board');return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
 let boardTimer=0;
-$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
+let titleT=0;
+$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#pin').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
@@ -1058,7 +1081,7 @@ function stopRun(){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(
 function restore(o){daily=o.daily;lvl=o.lvl;if(o.mode==='brief'){daily?openDaily():toBrief(lvl);return}showOver(o.mode,o.why)}
 function goHome(){stopRun();resetFX();showOver('map')}
 function drawTop(){
-  $('#back').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
+  $('#back').hidden=!playing()&&mode==='title';
   $('#trophy').hidden=playing()||!lbOn()||mode==='board';
   $('#restart').hidden=!playing();
   const me=$('#me');me.hidden=playing()||mode==='name'||!S.current;
@@ -1068,6 +1091,7 @@ function goBack(){
   const t=backTo();
   if(t==='brief'){stopRun();daily?openDaily():toBrief(lvl);return}
   if(t){restore(t);return}
+  if(mode==='map'||(mode==='name'&&!S.current)){showOver('title');return}   // the title screen sits above the level map
   goHome();
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
@@ -1460,7 +1484,7 @@ $('#plate').onclick=e=>{
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
 // reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
 let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
-preview();showOver(S.current?'brief':'name');submitScore();submitTimes();submitDaily();syncSave().then(()=>{if(mode==='map')drawLvls()});
+preview();showOver('title');submitScore();submitTimes();submitDaily();syncSave().then(()=>{if(mode==='map')drawLvls()});
 if(wasBoard&&S.current&&lbOn()){boardOrigin=null;boardLvl=lvl;boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
