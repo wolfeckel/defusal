@@ -325,7 +325,7 @@ const LEVELS=[
  LV('Expert',95,20,{wires:W([6,7],WALL,3),button:B(BALL,12,1.05),keys:K(6,5,1600),pulse:P(5,310)},'The final test.',{memo:1800})];
 
 /* ---------- player & progress (saved in this browser) ---------- */
-const STORE='defusal', UNLOCK=/[?&]unlock\b/.test(location.search);
+const STORE='defusal';
 let S=null;try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){}
 if(!S||!S.players)S={current:'',players:{}};
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
@@ -478,7 +478,7 @@ const toBrief=i=>{lvl=i;preview();showOver('brief')};
 $('#go').onclick=()=>{
   if(mode==='name'){
     const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
-    S.current=v;const P=prof();if(UNLOCK)P.unlocked=LEVELS.length-1;save();
+    S.current=v;const P=prof();save();
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
@@ -787,7 +787,7 @@ $('#plate').onclick=e=>{
 };
 
 /* start: name screen for new players, otherwise the next level's briefing */
-if(S.current){const P=prof();if(UNLOCK){P.unlocked=LEVELS.length-1;save()}lvl=Math.min(P.unlocked,LEVELS.length-1)}
+if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
 preview();showOver(S.current?'brief':'name');
 }
 </script>
