@@ -22,12 +22,22 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip;
 background-image:repeating-linear-gradient(135deg,transparent 0 46px,rgba(0,0,0,.045) 46px 92px)}
 h1,h2,h3{font-family:"Barlow Condensed",sans-serif;line-height:1.05;margin:0;text-wrap:balance}
-.wrap{max-width:1280px;margin:0 auto;padding:clamp(18px,3vw,40px) max(4vw,14px)}
-header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px 20px;margin-bottom:18px}
-header h1{font-size:clamp(34px,5vw,50px);font-weight:800}
-header p{margin:0;max-width:52ch}
-.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}
-@media(max-width:1000px){.grid{grid-template-columns:minmax(0,1fr)}}
+.wrap{max-width:1100px;margin:0 auto;padding:10px 12px 96px}
+/* top bar */
+.hud{display:flex;align-items:center;gap:10px;max-width:520px;margin:0 auto 10px}
+.hud h1{flex:1;font-size:24px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.ib{all:unset;box-sizing:border-box;cursor:pointer;width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:var(--case);color:#eef0f2;font:22px/1 system-ui,sans-serif;box-shadow:0 4px 0 #15181b}
+.ib:active{transform:translateY(3px);box-shadow:0 1px 0 #15181b}.ib:focus-visible{outline:3px solid #fff}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;max-width:520px;margin:0 auto}
+@media(min-width:900px){.hud{max-width:1100px}.grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);max-width:1100px;align-items:start}}
+/* manual button (phones) */
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:20;border:0;cursor:pointer;border-radius:999px;padding:0 24px;height:60px;
+background:#f2c230;color:#161616;font:800 22px "Barlow Condensed",sans-serif;letter-spacing:.04em;box-shadow:0 6px 0 #a8820f,0 12px 24px rgba(0,0,0,.4)}
+.fab:active{transform:translateY(4px);box-shadow:0 2px 0 #a8820f}.fab:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.fab.new::after{content:"";position:absolute;top:-3px;right:-3px;width:18px;height:18px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px #161616;animation:blink 1s infinite alternate}
+@keyframes blink{to{transform:scale(.7)}}
+.scrim{position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.45)}.scrim[hidden]{display:none}
+@media(min-width:900px){.fab,.scrim,.closeBk{display:none!important}}
 /* device */
 .device{background:linear-gradient(160deg,var(--case2),var(--case) 60%);border-radius:22px;padding:16px;position:relative;
 box-shadow:0 2px 0 var(--edge) inset,0 -3px 0 #1a1d20 inset,0 24px 40px -18px rgba(0,0,0,.55),0 6px 0 #15181b}
@@ -49,7 +59,7 @@ white-space:nowrap;pointer-events:none;z-index:4;animation:pen 1.3s ease-out for
 @keyframes pen{0%{opacity:0;transform:translate(-50%,-30px) scale(1.6)}15%{opacity:1;transform:translate(-50%,4px) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,24px)}}
 .lcd.hit{animation:hit .5s}@keyframes hit{0%,40%{background:#7a0e08}}
 .mods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-@media(max-width:560px){.mods{grid-template-columns:minmax(0,1fr)}.top{grid-template-columns:minmax(0,1fr) auto}.edge{grid-column:1/-1;order:3}}
+@media(max-width:560px){.top{grid-template-columns:minmax(0,1fr) auto}.edge{grid-column:1/-1;order:3}}
 .mod{background:linear-gradient(#41484f,#353b41);border-radius:14px;padding:14px;min-height:250px;position:relative;
 box-shadow:inset 0 1px 0 #5a636c,inset 0 -2px 0 #23272b}
 .mod h3{font-size:16px;font-weight:700;color:#c9ced3;margin-bottom:10px}
@@ -172,7 +182,6 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
 /* levels */
 .mod[hidden]{display:none}
 .mods.one{grid-template-columns:minmax(0,1fr);max-width:440px;margin:0 auto}
-.device:has(.over:not([hidden])){min-height:600px}
 .mod.done{animation:okp .7s ease-out}
 @keyframes okp{0%{box-shadow:0 0 0 0 rgba(62,224,122,.85)}100%{box-shadow:0 0 0 22px rgba(62,224,122,0)}}
 .lcd.safe{color:var(--ok);text-shadow:0 0 14px rgba(62,224,122,.7)}
@@ -189,15 +198,58 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
 .lv.won{background:#1f5134}.lv.cur{outline:3px solid #f2c230;outline-offset:1px}
 .lv:disabled{opacity:.3;cursor:default}.lv:focus-visible{outline:3px solid #fff}
 .link{display:block;margin:12px auto 0;background:none;border:0;color:#9aa2a9;text-decoration:underline;cursor:pointer;font:14px Barlow,sans-serif;min-height:32px}
+/* ===== mobile-game layout ===== */
+.mods{gap:10px}
+.mod{min-height:0;padding:12px}
+.mod h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.btnmod{grid-template-columns:minmax(0,1fr) 26px;gap:10px;min-height:0}
+.big{width:min(150px,100%)}
+.strip{height:min(150px,36vw)}
+.keys{gap:8px;max-width:190px}.key{font-size:clamp(26px,7vw,34px)}
+.pads{max-width:170px}
+.device{padding:12px}
+/* full-screen menus */
+.over{position:fixed;inset:0;z-index:40;border-radius:0;padding:24px 18px calc(24px + env(safe-area-inset-bottom));overflow:auto;
+background:radial-gradient(circle at 50% 28%,#3e454c,#16191c 72%)}
+.over>div{width:min(400px,100%);margin:auto}
+.over.lost{background:rgba(14,10,8,.6)}
+.over h2{font-size:clamp(40px,11vw,56px)}
+.over h2:empty,.over p:empty{display:none}
+.over p{font-size:18px;margin-bottom:20px}
+.over .row{flex-direction:column;align-items:stretch;gap:12px}
+.cta{font:800 24px "Barlow Condensed",sans-serif;letter-spacing:.06em;min-height:64px;border-radius:18px;box-shadow:0 6px 0 #a8820f}
+.cta:active{transform:translateY(4px);box-shadow:0 2px 0 #a8820f}
+.cta.alt{font-size:19px;min-height:52px;box-shadow:0 5px 0 #1b1e21}
+.logo{font:clamp(56px,17vw,84px)/1 "Share Tech Mono",monospace;color:var(--red);text-shadow:0 0 24px rgba(255,59,47,.7);background:var(--lcd);
+border-radius:16px;padding:14px 10px;box-shadow:inset 0 4px 12px #000;margin-bottom:28px;letter-spacing:.04em}
+.kicker{font-size:17px}
+.chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 24px}
+.chips:empty{display:none}
+.chip{background:rgba(0,0,0,.35);border-radius:999px;padding:8px 16px;font:22px/1 "Share Tech Mono",monospace;color:#fff}
+.chip.hot{background:#f2c230;color:#161616;font:800 18px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em}
+.name{font-size:24px;min-height:60px;border-radius:16px;width:100%}
+.lvls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;max-width:none;margin:0 0 20px}
+.lv{width:auto;height:auto;aspect-ratio:1;border-radius:16px;font:24px/1 "Share Tech Mono",monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 4px 0 #1b1e21}
+.lv small{font:12px/1 system-ui,sans-serif;color:#f2c230;letter-spacing:-.05em}
+.link{font-size:16px}
+/* manual: side panel on desktop, slide-up sheet on phones */
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.manual h2{font-size:26px;margin:0}
+.manual{padding:18px clamp(16px,3vw,24px)}
+.manual ul{padding-left:1.1em;margin:0 0 12px}.manual ul li{margin-bottom:6px}
+.closeBk{background:var(--rule);color:var(--ink);box-shadow:none}
+@media(max-width:899px){
+ .manual{position:fixed;left:0;right:0;bottom:0;z-index:30;max-height:80dvh;overflow:auto;border-radius:22px 22px 0 0;padding-top:26px;
+ transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);box-shadow:0 -12px 40px rgba(0,0,0,.5)}
+ .manual.open{transform:none}
+ .manual::before{top:9px;width:52px;height:5px;margin-left:-26px;border-radius:3px;background:var(--rule)}
+}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
-  <h1>Defusal training rig</h1>
-  <p>Read the casing, check the field manual, and neutralise every module before the clock runs out. Training starts with a single wire and builds, level by level, to the full rig and its final lock. Every mistake costs time. Play solo, or have a partner read the manual without seeing the device.</p>
-</header>
+<div class="hud"><button class="ib" id="menu" aria-label="Levels">☰</button><h1 id="hudLvl">Level 1</h1></div>
 <div class="grid">
 <section class="device" id="device" aria-label="Device">
   <span class="bolt" style="top:8px;left:8px"></span><span class="bolt" style="top:8px;right:8px"></span>
@@ -208,7 +260,7 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
       <div class="tag">Serial<b id="serial">——</b></div>
       <div class="tag">Batteries<b id="batt">—</b></div>
     </div>
-    <div class="strikes" id="mist" aria-label="Mistakes">Mistakes<b>0</b></div>
+    <div class="strikes" id="mist" aria-label="Mistakes">✖<b>0</b></div>
   </div>
   <div class="mods">
     <div class="mod" id="m-wires"><h3>Wires</h3><span class="led"></span><div class="wires" id="wires"></div></div>
@@ -237,28 +289,29 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
       </div>
     </div>
   </div>
-  <div class="over" id="over">
-    <div>
-      <div id="oTop"></div>
-      <h2 id="oTitle">Ready to defuse?</h2>
-      <p id="oText"></p>
-      <div class="row" id="nameRow" style="margin-bottom:14px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
-      <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
-      <div class="row"><button class="cta" id="go">Arm the device</button><button class="cta alt" id="alt" hidden>Replay level</button></div>
-      <button class="link" id="who" hidden>Change name</button>
-    </div>
-  </div>
 </section>
 
-<aside class="manual" aria-label="Field manual">
-  <h2>Field manual</h2>
-  <p class="sub">Modules can be solved in any order. A wrong action takes time off the clock.</p>
+<aside class="manual" id="manual" aria-label="Manual">
+  <div class="mhead"><h2>Manual</h2><button class="ib closeBk" id="closeBk" aria-label="Close manual">✕</button></div>
   <div class="tabs" role="tablist" id="tabs"></div>
   <div id="page"></div>
 </aside>
 </div>
 </div>
-
+<button class="fab" id="book" aria-label="Open manual">📖 Manual</button>
+<div class="scrim" id="scrim" hidden></div>
+<div class="over" id="over">
+  <div>
+    <div id="oTop"></div>
+    <h2 id="oTitle"></h2>
+    <p id="oText"></p>
+    <div class="chips" id="chips"></div>
+    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
+    <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
+    <div class="row"><button class="cta" id="go">PLAY</button><button class="cta alt" id="alt" hidden>↻ Replay</button></div>
+    <button class="link" id="who" hidden></button>
+  </div>
+</div>
 <div id="vig"></div><canvas id="fx"></canvas><div id="flash"></div><canvas id="crack"></canvas>
 <script>
 {
@@ -289,33 +342,33 @@ const HOLDDIGIT={blue:'4',yellow:'5',green:'2',red:'1'};
 const ORDER=['wires','button','keys','pulse'], TABN={wires:'Wires',button:'Button',keys:'Keypad',pulse:'Pulse'};
 const R5=[1,2,3,4,5], FW={rules:R5,n:[3,6]}, FB={rules:R5}, FK={cols:6}, FP={stages:3}, RIG={wires:FW,button:FB,keys:FK,pulse:FP};
 const LEVELS=[
- {t:'First cut',time:120,pen:10,mods:{wires:{rules:[1],n:[3,3]}},intro:'Cut the right wire. The Wires page of the field manual tells you which one.'},
- {t:'Yellow alert',time:120,pen:10,mods:{wires:{rules:[1,2],n:[3,4]}},intro:'A second wiring rule. Check the rules in order and use the first one that applies.'},
- {t:'No black',time:120,pen:10,mods:{wires:{rules:[1,2,3],n:[3,5]}},intro:'Three wiring rules now, and up to five wires.'},
- {t:'White lead',time:120,pen:10,mods:{wires:{rules:[1,2,3,4],n:[4,6]}},intro:'Four rules, up to six wires.'},
- {t:'Full harness',time:105,pen:15,mods:{wires:FW},intro:'The complete wiring rules. A little less time, a bigger penalty.'},
- {t:'Tap',time:120,pen:10,mods:{button:{rules:[2,4]}},intro:'New module: the Button. A tap is a quick press and release.'},
- {t:'Hold',time:120,pen:10,mods:{button:{rules:[1,3,5]}},intro:'Sometimes you hold the button. Keep it down until the strip lights, then let go when the timer shows the right digit.'},
- {t:'Tap or hold',time:120,pen:15,mods:{button:FB},intro:'All the button rules together.'},
- {t:'Double trouble',time:180,pen:15,mods:{wires:FW,button:FB},intro:'Two modules on one device. Solve them in any order.'},
- {t:'Symbols',time:120,pen:10,mods:{keys:{cols:2}},intro:'New module: the Keypad. Find the column that has all four symbols.'},
- {t:'More symbols',time:120,pen:10,mods:{keys:{cols:4}},intro:'Four columns to search now.'},
- {t:'Full keypad',time:120,pen:15,mods:{keys:FK},intro:'All six columns.'},
- {t:'Cut and key',time:180,pen:15,mods:{wires:FW,keys:FK},intro:'Wires and Keypad on one device.'},
- {t:'Press and key',time:180,pen:15,mods:{button:FB,keys:FK},intro:'Button and Keypad on one device.'},
- {t:'Pulse',time:120,pen:10,mods:{pulse:{stages:1}},intro:'New module: Pulse. Watch the flash, look it up, press the matching pad.'},
- {t:'Echo',time:120,pen:15,mods:{pulse:{stages:2}},intro:'Two stages. Each stage adds one flash to the sequence.'},
- {t:'Full pulse',time:150,pen:15,mods:{pulse:FP},intro:'Three stages. Remember: the table changes after each mistake.'},
- {t:'Wired pulse',time:180,pen:20,mods:{wires:FW,pulse:FP},intro:'Wires and Pulse on one device.'},
- {t:'Three-way',time:240,pen:20,mods:{wires:FW,button:FB,keys:FK},intro:'Three modules at once.'},
- {t:'Full rig',time:330,pen:20,mods:RIG,intro:'All four modules. This is the complete training device.'},
- {t:'Final lock',time:420,pen:30,final:true,mods:RIG,intro:'New: when all four modules are done, the cover opens on the Final lock. Work out its code, or use the maintenance bypass.'},
- {t:'Tighter',time:360,pen:30,final:true,mods:RIG,intro:'Same device, less time.'},
- {t:'Standard issue',time:300,pen:30,final:true,mods:RIG,intro:'Standard difficulty.'},
- {t:'Pressure',time:270,pen:40,final:true,mods:RIG,intro:'The clock keeps shrinking.'},
- {t:'Short fuse',time:240,pen:45,final:true,mods:RIG,intro:'Mistakes hurt now.'},
- {t:'Veteran',time:210,pen:60,final:true,mods:RIG,intro:'A full minute per mistake.'},
- {t:'Expert',time:180,pen:60,final:true,mods:RIG,intro:'The last test. Clear it and you are a certified technician.'}];
+ {t:'First cut',time:120,pen:10,mods:{wires:{rules:[1],n:[3,3]}},intro:'Cut the right wire.'},
+ {t:'Yellow alert',time:120,pen:10,mods:{wires:{rules:[1,2],n:[3,4]}},intro:'New rule: yellow.'},
+ {t:'No black',time:120,pen:10,mods:{wires:{rules:[1,2,3],n:[3,5]}},intro:'New rule: no black.'},
+ {t:'White lead',time:120,pen:10,mods:{wires:{rules:[1,2,3,4],n:[4,6]}},intro:'New rule: white first.'},
+ {t:'Full harness',time:105,pen:15,mods:{wires:FW},intro:'All wire rules.'},
+ {t:'Tap',time:120,pen:10,mods:{button:{rules:[2,4]}},intro:'New: the Button. Tap it.'},
+ {t:'Hold',time:120,pen:10,mods:{button:{rules:[1,3,5]}},intro:'Hold, then let go on the digit.'},
+ {t:'Tap or hold',time:120,pen:15,mods:{button:FB},intro:'Tap or hold?'},
+ {t:'Double trouble',time:180,pen:15,mods:{wires:FW,button:FB},intro:'Two modules.'},
+ {t:'Symbols',time:120,pen:10,mods:{keys:{cols:2}},intro:'New: the Keypad.'},
+ {t:'More symbols',time:120,pen:10,mods:{keys:{cols:4}},intro:'Four columns.'},
+ {t:'Full keypad',time:120,pen:15,mods:{keys:FK},intro:'Six columns.'},
+ {t:'Cut and key',time:180,pen:15,mods:{wires:FW,keys:FK},intro:'Wires + Keypad.'},
+ {t:'Press and key',time:180,pen:15,mods:{button:FB,keys:FK},intro:'Button + Keypad.'},
+ {t:'Pulse',time:120,pen:10,mods:{pulse:{stages:1}},intro:'New: Pulse.'},
+ {t:'Echo',time:120,pen:15,mods:{pulse:{stages:2}},intro:'Two stages.'},
+ {t:'Full pulse',time:150,pen:15,mods:{pulse:FP},intro:'Three stages.'},
+ {t:'Wired pulse',time:180,pen:20,mods:{wires:FW,pulse:FP},intro:'Wires + Pulse.'},
+ {t:'Three-way',time:240,pen:20,mods:{wires:FW,button:FB,keys:FK},intro:'Three modules.'},
+ {t:'Full rig',time:330,pen:20,mods:RIG,intro:'All four modules.'},
+ {t:'Final lock',time:420,pen:30,final:true,mods:RIG,intro:'New: the Final lock.'},
+ {t:'Tighter',time:360,pen:30,final:true,mods:RIG,intro:'Less time.'},
+ {t:'Standard issue',time:300,pen:30,final:true,mods:RIG,intro:'Standard issue.'},
+ {t:'Pressure',time:270,pen:40,final:true,mods:RIG,intro:'Faster.'},
+ {t:'Short fuse',time:240,pen:45,final:true,mods:RIG,intro:'Short fuse.'},
+ {t:'Veteran',time:210,pen:60,final:true,mods:RIG,intro:'Mistakes cost a minute.'},
+ {t:'Expert',time:180,pen:60,final:true,mods:RIG,intro:'The final test.'}];
 
 /* ---------- player & progress (saved in this browser) ---------- */
 const STORE='defusal', UNLOCK=/[?&]unlock\b/.test(location.search);
@@ -432,40 +485,51 @@ function end(win,why){
 let mode='name';
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 const kick=t=>`<div class="kicker">${t}</div>`;
+const chip=(t,c='')=>`<span class="chip ${c}">${t}</span>`;
 const starHTML=n=>`<div class="stars" aria-label="${n} of 3 stars">${[0,1,2].map(i=>`<span style="animation-delay:${.6+i*.25}s">${i<n?'★':'<i>★</i>'}</span>`).join('')}</div>`;
 function drawLvls(){
   const P=prof();
-  $('#lvls').innerHTML=LEVELS.map((L,i)=>`<button class="lv${P.best[i]?' won':''}${i===lvl?' cur':''}" data-i="${i}"${i>P.unlocked?' disabled':''} title="${L.t}" aria-label="Level ${i+1}, ${L.t}${P.best[i]?', '+P.best[i].s+' stars':''}">${i+1}</button>`).join('');
+  $('#lvls').innerHTML=LEVELS.map((L,i)=>{const b=P.best[i];return`<button class="lv${b?' won':''}${i===lvl?' cur':''}" data-i="${i}"${i>P.unlocked?' disabled':''} aria-label="Level ${i+1}${b?', '+b.s+' stars':''}">${i+1}${b?`<small>${'★'.repeat(b.s)}${'☆'.repeat(3-b.s)}</small>`:''}</button>`}).join('');
 }
+// screens: name · map · brief · win · lose
 function showOver(m,why){
   mode=m;const L=LEVELS[lvl],n=lvl+1,o=$('#over'),last=lvl===LEVELS.length-1;
-  let top='',title='',text='',go='';
-  if(m==='name'){top=kick('Defusal training');title='Who’s defusing?';text='Enter your name to start training. Your progress is saved in this browser.';go='Start training';$('#name').value=S.current}
-  if(m==='brief'){top=kick(`Level ${n} of ${LEVELS.length}`);title=L.t;text=`${L.intro} ${fmt(L.time)} on the clock, −${L.pen}s per mistake.`;go='Arm the device';
-    $('#who').textContent=`Not ${S.current}? Change name`;drawLvls()}
+  let top='',title='',text='',chips='',go='',link='';
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current}
+  if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
+    top=kick(`★ ${tot} / ${LEVELS.length*3}`);title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
+  if(m==='brief'){top=kick(`Level ${n}`);title=L.t;text=L.intro;chips=chip('⏱ '+fmt(L.time))+chip(`✖ −${L.pen}s`);go='PLAY';link='All levels'}
   if(m==='win'){const r=G.result;top=kick(`Level ${n} cleared`)+starHTML(r.stars);
     title=last?`Certified, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
-    text=`${clockText()} left, ${G.strikes} mistake${G.strikes===1?'':'s'}${G.bypassed?', lock opened through the bypass':''}.${r.beat?' New personal best!':''}${r.stars<3?' Clear it with no mistakes for three stars.':''}${last?' You finished every level of training.':''}`;
-    go=last?'Level select':'Next level →'}
-  if(m==='lose'){top=kick(`Level ${n}: ${L.t}`);title='Boom.';text=`${why} The serial was ${G.serial}. Check the manual and try again.`;go='Try again';drawLvls()}
+    text=last?'You beat every level.':'';
+    chips=chip('⏱ '+clockText())+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
+  if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY';link='All levels'}
   o.classList.toggle('lost',m==='lose');
-  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='brief'&&m!=='lose';$('#alt').hidden=m!=='win';$('#who').hidden=m!=='brief';
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#go').textContent=go;o.hidden=false;
+  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#alt').hidden=m!=='win';
+  const w=$('#who');w.hidden=!link;w.textContent=link;
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
 }
 function preview(){resetFX();newGame();G.over=true}
+const toBrief=i=>{lvl=i;preview();showOver('brief')};
 $('#go').onclick=()=>{
   if(mode==='name'){
     const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
     S.current=v;const P=prof();if(UNLOCK)P.unlocked=LEVELS.length-1;save();
-    lvl=Math.min(P.unlocked,LEVELS.length-1);preview();showOver('brief');return}
-  if(mode==='win'){if(lvl<LEVELS.length-1)lvl++;preview();showOver('brief');return}
+    toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
+  if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
+  if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
 $('#alt').onclick=()=>start();
-$('#who').onclick=()=>showOver('name');
+$('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
-$('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(!b||b.disabled)return;lvl=+b.dataset.i;preview();showOver('brief')};
+$('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
+// ☰ during play: abandon the level and go to the map
+$('#menu').onclick=()=>{if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null)}book(false);preview();showOver('map')};
+// manual sheet (phones)
+function book(open){$('#manual').classList.toggle('open',open);$('#scrim').hidden=!open;if(open)$('#book').classList.remove('new')}
+$('#book').onclick=()=>book(true);$('#closeBk').onclick=()=>book(false);$('#scrim').onclick=()=>book(false);
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -649,7 +713,7 @@ function loop(prev){
 }
 function start(){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){ac=null}
-  newGame();$('#over').hidden=true;lastTick=-1;resetFX();
+  newGame();$('#over').hidden=true;lastTick=-1;resetFX();book(false);scrollTo(0,0);
   const p=performance.now();loop(p);schedFlash(600);
 }
 
@@ -773,31 +837,29 @@ const WR={1:'if the serial’s last digit is odd and there is at least one red w
 const BR={1:'Blue button labelled ABORT: <b>hold</b>.',2:'Two or more batteries and labelled DETONATE: <b>tap</b>.',3:'White button: <b>hold</b>.',4:'Red button labelled HOLD: <b>tap</b>.',5:'Anything else: <b>hold</b>.'};
 function buildPages(L){
  const M=L.mods,p={};
- p['Casing']=`<h3>Reading the casing</h3><ol>
-  <li><b>Serial number</b>: six characters on the plate. The last character is always a digit. Vowels are A, E, I, O, U.</li>
-  <li><b>Batteries</b>: the count shown beside the serial.</li>
-  <li><b>Mistakes</b>: every wrong action knocks <b>${L.pen} seconds</b> off the timer on this level. The device detonates only when the timer hits zero.</li>
-  <li>When a module is solved, its lamp turns green.</li></ol>
-  <p class="note">Tip: play with a partner. One person sees only the device and describes it; the other sees only this manual.</p>`;
- if(M.wires)p['Wires']=`<h3>Wires</h3><p>Cut exactly one wire. Wires are numbered from the top.${M.wires.rules.length>1?' Use the first rule that applies:':''}</p><ol>
+ p['Casing']=`<h3>Casing</h3><ul>
+  <li><b>Serial</b>: always ends in a digit. Vowels: A E I O U.</li>
+  <li><b>Batteries</b>: the number beside the serial.</li>
+  <li><b>✖ Mistake</b>: −${L.pen}s. Boom at 0:00.</li>
+  <li>Green lamp = solved.</li></ul>`;
+ if(M.wires)p['Wires']=`<h3>Wires</h3><p>Cut one wire, counting from the top.${M.wires.rules.length>1?' First rule that applies:':''}</p><ol>
   ${M.wires.rules.map((r,i)=>`<li>${i?'Otherwise, '+WR[r]:cap(WR[r])}</li>`).join('')}</ol>`;
- if(M.button)p['Button']=`<h3>The button</h3><p>Decide whether to tap (press and release quickly) or hold.${M.button.rules.length>1?' Use the first rule that applies:':''}</p><ol>
+ if(M.button)p['Button']=`<h3>Button</h3><p><b>Tap</b> = quick press. <b>Hold</b> = keep it down.${M.button.rules.length>1?' First rule that applies:':''}</p><ol>
   ${M.button.rules.map(r=>`<li>${BR[r]}</li>`).join('')}</ol>
-  ${M.button.rules.some(r=>r%2)?`<p><b>Holding:</b> after a moment the strip beside the button lights up. Release when the timer shows this digit in any position:</p>
+  ${M.button.rules.some(r=>r%2)?`<p><b>Holding:</b> the strip lights up. Let go when the timer shows this digit anywhere:</p>
   <table><thead><tr><th>Strip colour</th><th>Release on</th></tr></thead><tbody>${Object.entries(HOLDDIGIT).map(([c,d])=>`<tr><td>${sw(c)}</td><td><b>${d}</b></td></tr>`).join('')}</tbody></table>`:''}`;
- if(M.keys){const K=KEYCOLS.slice(0,M.keys.cols);p['Keypad']=`<h3>Keypad</h3><p>Exactly one column below contains all four symbols on the keypad. Press the four keys in the order they appear in that column, top to bottom.</p>
+ if(M.keys){const K=KEYCOLS.slice(0,M.keys.cols);p['Keypad']=`<h3>Keypad</h3><p>Find the one column with all four symbols. Press them in that column’s order, top to bottom.</p>
   <div class="scroll"><table><thead><tr>${K.map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
   ${K[0].map((_,r)=>`<tr>${K.map(c=>`<td class="sym">${c[r]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
- if(M.pulse){const s=M.pulse.stages;p['Pulse']=`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order.${s>1?` Each stage adds one flash; clear ${s} stages.`:''} The answer depends on whether the serial contains a vowel and on how many mistakes you have made <b>so far</b>.</p>
+ if(M.pulse){const s=M.pulse.stages;p['Pulse']=`<h3>Pulse</h3><p>For each flash, press the pad from the table.${s>1?` Each stage adds a flash; clear ${s}.`:''} Use the column for your mistakes <b>so far</b>.</p>
   ${[1,0].map(v=>`<p style="margin:14px 0 0"><b>Serial ${v?'has':'has no'} vowel</b></p><div class="scroll"><table><thead><tr><th>Flash</th><th>0 mistakes</th><th>1 mistake</th><th>2 or more</th></tr></thead><tbody>
   ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`}
- if(L.final)p['Final lock']=`<h3>Final lock</h3><p>When all four modules are solved, the cover opens on the final lock. Enter its four-digit code and press ENT (a keyboard works too). A wrong code counts as a mistake.</p>
-  <p><b>Working out the code</b></p><ol>
-  <li>First digit: the number of the wire you correctly cut in the Wires module.</li>
-  <li>Second digit: the battery count plus the number of letters on the button's label. If the total is 10 or more, use its last digit.</li>
-  <li>Third digit: the number of the Keypad column you used.</li>
-  <li>Fourth digit: add up all the digits in the serial number and use the last digit of the total.</li></ol>
-  <p><b>Maintenance bypass</b></p><p>If you can't work out the code, remove the four screws on the maintenance plate and disconnect the lock's harness instead. Cut the wires in the order below for your battery count, skipping any colours that aren't there. A wrong cut sparks and counts as a mistake. Once every wire is cut, the lock's memory shows the code. Enter it to finish.</p>
+ if(L.final)p['Final lock']=`<h3>Final lock</h3><p>Enter the 4-digit code, then ENT. Wrong code = mistake.</p><ol>
+  <li>The wire number you cut.</li>
+  <li>Batteries + letters on the button label (last digit).</li>
+  <li>The Keypad column you used.</li>
+  <li>Sum of the serial’s digits (last digit).</li></ol>
+  <p><b>Bypass:</b> stuck? Unscrew the plate and cut the harness in this order (skip missing colours). It shows the code.</p>
   <div class="scroll"><table><thead><tr><th>Batteries</th><th style="text-align:start">Cut order</th></tr></thead><tbody>
   ${[1,2,3].map(b=>`<tr><td><b>${b}</b></td><td style="text-align:start">${BYPASS[b].map(sw).join(' → ')}</td></tr>`).join('')}</tbody></table></div>`;
  return p;
@@ -809,8 +871,11 @@ $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.textConten
 function setManual(){
   const L=LEVELS[lvl],prev=LEVELS[lvl-1];PAGES=buildPages(L);const names=Object.keys(PAGES);
   $('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${i}" aria-selected="false">${n}</button>`).join('');
-  const fresh=G.active.find(k=>!prev||!prev.mods[k]);
-  show(L.final&&!(prev&&prev.final)?'Final lock':fresh?TABN[fresh]:names.includes(curTab)?curTab:names[1]);
+  const fresh=G.active.find(k=>!prev||!prev.mods[k]),newLock=L.final&&!(prev&&prev.final);
+  show(newLock?'Final lock':fresh?TABN[fresh]:names.includes(curTab)?curTab:names[1]);
+  // red dot on the manual button when a module, rule or column is new on this level
+  const changed=!prev||JSON.stringify(prev.mods)!==JSON.stringify(L.mods)||newLock;
+  $('#book').classList.toggle('new',changed);$('#hudLvl').textContent=`Level ${lvl+1}`;
 }
 
 /* start: name screen for new players, otherwise the next level's briefing */
