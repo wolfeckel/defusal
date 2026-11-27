@@ -273,6 +273,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .board .nm small{display:block;font:13px "Share Tech Mono",monospace;color:#9aa2a9}
 .chip.rec{background:#3a2f0a;color:#f2c230}
 .chip.xl{font-size:28px;padding:10px 18px}
+.cta.spin{animation:spinpress .6s}@keyframes spinpress{30%{transform:scale(.96)}}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -686,11 +687,11 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>ESC[c]);
 const MEDAL=['🥇','🥈','🥉'];
 // leaderboard screen: Overall (levels → stars → total time) or Fastest (one level's best times)
 let boardTab='all',boardLvl=0,boardSeq=0;
-async function drawBoard(){
+async function drawBoard(quiet){
   const seq=++boardSeq,tab=boardTab,b=$('#board'),stale=()=>mode!=='board'||seq!==boardSeq,gap='<li class="gap">⋯</li>';
   document.querySelectorAll('#btabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===tab));
   $('#lvpick').hidden=tab!=='fast';$('#lvpickT').textContent=`Level ${boardLvl+1}`;
-  b.innerHTML='<li class="msg">Loading…</li>';
+  if(!quiet||!b.children.length)b.innerHTML='<li class="msg">Loading…</li>';
   try{
     if(tab==='all'){
       const [top,me]=await Promise.all([lbCall('top_scores',{n:50}),S.current?lbCall('my_rank',{p_id:pid()}):null]);if(stale())return;
@@ -752,7 +753,8 @@ function showOver(m,why){
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
-  $('#alt').hidden=m!=='win';
+  const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board';alt.textContent=m==='board'?'↻ Refresh':'↻ Replay';
+  clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
   $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();if(m==='board')drawBoard();if(m==='brief')drawRecord();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
@@ -772,7 +774,8 @@ $('#go').onclick=()=>{
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
-$('#alt').onclick=()=>{audioOn();SFX.click(1400);start()};
+let boardTimer=0;
+$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
