@@ -322,6 +322,10 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .tbomb .logo{margin-bottom:14px;font-size:clamp(44px,13vw,64px);padding:10px 6px}
 .tled{position:absolute;top:12px;right:14px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 14px var(--red);animation:tblink 1s steps(2,jump-none) infinite}
 @keyframes tblink{50%{opacity:.15;box-shadow:none}}
+.tled{cursor:pointer}.tled::before{content:"";position:absolute;inset:-16px}   /* bigger tap area */
+.tled.ok{background:var(--ok);box-shadow:0 0 14px var(--ok);animation:none}
+.tbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.tbtns[hidden]{display:none}
+.tbtns .cta{min-height:48px;font-size:18px}
 .tclock{width:fit-content;margin:0 auto 16px;padding:8px 14px;border-radius:10px;background:#0b170e;box-shadow:inset 0 3px 8px #000;
   font:44px/1 "Share Tech Mono",monospace;color:#46ff8a;text-shadow:0 0 12px rgba(70,255,138,.6)}
 .tclock.low{background:var(--lcd);color:var(--red);text-shadow:0 0 14px rgba(255,59,47,.8)}
@@ -998,7 +1002,9 @@ function showOver(m,why){
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
-  if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
+  // secret: tap the red light 3 times → green light, 88:88, LASUFED, and COLORS / FIX buttons
+  if(m==='title'){tSecret=false;tTaps=0;
+    top=`<div class="tbomb"><span class="tled" role="button" aria-label="Warning light"></span><div class="logo" id="tlogo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div><div class="tbtns" id="tbtns" hidden><button class="cta alt" id="tcolors">COLORS</button><button class="cta" id="tfix">FIX</button></div></div>`;
     text='Cut the wires. Beat the clock.';go='▶ PLAY';
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'SAVE':'PLAY';$('#name').value=S.current;$('#pin').value='';
@@ -1017,7 +1023,7 @@ function showOver(m,why){
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
   const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board'&&m!=='title';alt.textContent=m==='board'?'↻ Refresh':m==='title'?'📅 Daily bomb':'↻ Replay';
-  clearInterval(titleT);if(m==='title'){let s=10;titleT=setInterval(()=>{const c=$('#tclock');if(!c||mode!=='title'){clearInterval(titleT);return}
+  clearInterval(titleT);if(m==='title'){let s=10;titleT=setInterval(()=>{const c=$('#tclock');if(!c||mode!=='title'){clearInterval(titleT);return}if(tSecret)return;
     s=s>0?s-1:10;c.textContent='0:'+String(s).padStart(2,'0');c.classList.toggle('low',s<=3)},1000)}
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
@@ -1032,6 +1038,15 @@ function openDaily(){daily=true;DAILY=buildDaily(todayKey());preview();showOver(
 $('#oTop').onclick=e=>{
   if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}
   if(e.target.closest('#nextLv')){audioOn();SFX.click(1400);toBrief(Math.min(prof().unlocked,LEVELS.length-1))}
+  // title secret
+  if(e.target.closest('.tled')&&!tSecret){
+    audioOn();clearTimeout(tTapT);tTaps++;beep(900+tTaps*200,.05,'square',.05);tTapT=setTimeout(()=>{tTaps=0},1500);
+    if(tTaps>=3){tSecret=true;tTaps=0;$('.tled').classList.add('ok');const c=$('#tclock');c.textContent='88:88';c.classList.remove('low');
+      $('#tlogo').textContent='LASUFED';$('#tbtns').hidden=false;[523,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.12,'sine',.07),i*90))}
+  }
+  if(e.target.closest('#tcolors')){audioOn();SFX.click(1400);
+    document.querySelectorAll('.twires i').forEach(w=>w.style.setProperty('--c',Math.random()<.5?pick(TCOLS):`hsl(${rnd(360)} 85% 55%)`))}
+  if(e.target.closest('#tfix')){audioOn();SFX.thunk();showOver('title')}   // redraws the title: red light, DEFUSAL, ticking clock, normal wires
 };
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
@@ -1056,7 +1071,8 @@ $('#go').onclick=()=>{
   start();
 };
 let boardTimer=0;
-let titleT=0;
+let titleT=0,tTaps=0,tTapT=0,tSecret=false;
+const TCOLS=['#e8382e','#2f6fe0','#f2c230','#eeeeee','#141414','#2fb85a'];
 $('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
