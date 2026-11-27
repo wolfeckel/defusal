@@ -247,7 +247,10 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .pad.pop{animation:padpop .18s ease-out}@keyframes padpop{from{transform:scale(.8)}}
 .pad.bad{animation:bad .4s}
 /* mute + leaderboard */
-.mute{position:fixed;top:10px;right:12px;z-index:45}
+.topbar{position:fixed;top:10px;left:0;right:0;max-width:544px;margin:0 auto;padding:0 12px;z-index:45;display:flex;gap:8px;pointer-events:none}
+.topbar .sp{flex:1}.topbar .ib{pointer-events:auto}.topbar .ib[hidden]{display:none}
+.hud{min-height:46px}.hud h1{padding-left:56px}
+.over{padding-top:72px}
 .board{list-style:none;margin:0 0 18px;padding:0;text-align:left;display:flex;flex-direction:column;gap:6px}
 .board[hidden]{display:none}
 .board li{display:grid;grid-template-columns:38px minmax(0,1fr) 62px 70px;gap:10px;align-items:center;background:rgba(0,0,0,.32);border-radius:12px;padding:9px 12px;font:600 18px Barlow,sans-serif}
@@ -261,7 +264,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </head>
 <body>
 <div class="wrap">
-<div class="hud"><button class="ib" id="menu" aria-label="Levels">☰</button><h1 id="hudLvl">Level 1</h1></div>
+<div class="hud"><h1 id="hudLvl">Level 1</h1></div>
 <div class="grid">
 <section class="device" id="device" aria-label="Device">
   <span class="bolt" style="top:8px;left:8px"></span><span class="bolt" style="top:8px;right:8px"></span>
@@ -302,7 +305,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<button class="ib mute" id="mute" aria-label="Sound on">🔊</button>
+<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><span class="sp"></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -684,18 +687,18 @@ function showOver(m,why){
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`);title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
   if(m==='brief'){top=kick(`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
-    chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'');go='PLAY';link='All levels'}
+    chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'');go='PLAY'}
   if(m==='win'){const r=G.result;top=kick(last?'Master technician':`Level ${n} cleared`)+starHTML(r.stars);
     title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
     text=last?'All 100 levels defused.':'';
     chips=chip('⏱ '+clockText())+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
-  if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY';link='All levels'}
+  if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY'}
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK';drawBoard()}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';
-  const alt=$('#alt');alt.hidden=!(m==='win'||(m==='map'&&lbOn()));alt.textContent=m==='map'?'🏆 Leaderboard':'↻ Replay';
+  $('#alt').hidden=m!=='win';
   const w=$('#who');w.hidden=!link;w.textContent=link;
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
   // on the map, scroll the current level into view
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
@@ -709,16 +712,30 @@ $('#go').onclick=()=>{
     S.current=v;const P=prof();save();
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
-  if(mode==='board'){showOver('map');return}
+  if(mode==='board'){goBack();return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
-$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='map')showOver('board');else start()};
+$('#alt').onclick=()=>{audioOn();SFX.click(1400);start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
 // ☰ during play: abandon the level and go to the map
-$('#menu').onclick=()=>{if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null)}preview();showOver('map')};
+/* ---------- top bar: ← back · 🏆 leaderboard · 🔊 mute ---------- */
+// back is "up one level": mid-level → that level's briefing; leaderboard → where it was opened; everything else → the map
+let boardFrom='map';
+const playing=()=>$('#over').hidden;
+function drawTop(){
+  $('#back').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
+  $('#trophy').hidden=playing()||!lbOn()||mode==='board';
+}
+function goBack(){
+  if(playing()){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}toBrief(lvl);return}
+  if(mode==='board'&&boardFrom==='brief'){toBrief(lvl);return}
+  showOver('map');
+}
+$('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
+$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';showOver('board')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -902,7 +919,7 @@ function loop(prev){
 }
 function start(){
   audioOn();
-  newGame();$('#over').hidden=true;lastTick=-1;resetFX();scrollTo(0,0);
+  newGame();$('#over').hidden=true;drawTop();lastTick=-1;resetFX();scrollTo(0,0);
   const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
   if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
