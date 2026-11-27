@@ -385,7 +385,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <p id="oText"></p>
     <div class="chips" id="chips"></div>
     <div class="chips" id="ranks" aria-live="polite"></div>
-    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"><input class="name pin" id="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Code (played before?)" aria-label="4-digit code, if you've played before"></div>
+    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"><input class="name pin" id="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="4-digit code" aria-label="That player's 4-digit code" hidden></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
     <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button><button role="tab" data-t="daily">Daily</button></div>
     <div class="lvpick" id="lvpick" hidden><button class="ib" data-d="-1" aria-label="Previous level">◀</button><span id="lvpickT">Level 1</span><button class="ib" data-d="1" aria-label="Next level">▶</button></div>
@@ -999,14 +999,18 @@ function drawLvls(){
 // screens: name · map · brief · win · lose
 function showOver(m,why){
   if(m==='map')daily=false;
+  if(m!=='name')renaming=false;
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
     text='Cut the wires. Beat the clock.';go='▶ PLAY';
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;$('#pin').value='';showPin();
-    if(lbOn()&&S.current)text=`Your code is ${prof().pin}. Use it with your name on another device.`}
+  // name screen: a name and PLAY (the code box only appears once a name clash is confirmed).
+  // "Change name" switches it to renaming the current player: New name → SAVE, or Cancel.
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';$('#pin').value='';$('#pin').hidden=true;
+    if(renaming){title='Change name';go='SAVE';link='Cancel';$('#name').value='';$('#name').placeholder='New name'}
+    else{go='PLAY';link=S.current?'Change name':'';$('#name').value=S.current;$('#name').placeholder='Your name'}}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
@@ -1040,7 +1044,7 @@ $('#oTop').onclick=e=>{
 };
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
-  if(mode==='name'){nameSubmit(false);return}
+  if(mode==='name'){if(renaming)renameMe();else nameSubmit();return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='title'){if(S.current)toBrief(Math.min(prof().unlocked,LEVELS.length-1));else showOver('name');return}
   if(mode==='board'){goBack();return}
@@ -1072,8 +1076,19 @@ function nameSubmit(){
     if(taken){$('#pin').hidden=false;msg(`“${v}” is already playing. If that’s you, enter your 4-digit code.`);$('#pin').focus();return}
     fresh()}).catch(()=>{g.disabled=false;fresh()});
 }
-// the code box only matters for a name this device doesn't know
-const showPin=()=>{const v=$('#name').value.trim();$('#pin').hidden=!lbOn()||!v||v===S.current||!!S.players[v]};
+// Change name: rename the current player everywhere through the database (same player, progress and code)
+let renaming=false;
+function renameMe(){
+  const v=$('#name').value.trim().slice(0,20),msg=t=>{$('#oText').textContent=t};
+  if(!v){$('#name').focus();return}
+  if(v===S.current){renaming=false;showOver('name');return}
+  if(S.players[v]){msg(`“${v}” is already a player on this device.`);return}
+  if(!lbOn()){msg('Changing your name needs the internet.');return}
+  const g=$('#go');g.disabled=true;msg('Saving…');
+  syncSave().then(()=>lbCall('rename_player',{p_id:pid(),p_pin:prof().pin,p_name:v}))
+    .then(()=>{g.disabled=false;adoptName(v);renaming=false;showOver('name')})
+    .catch(e=>{g.disabled=false;msg(e.message==='name taken'?`“${v}” is already playing. Pick another name.`:'Couldn’t change your name right now. Try again.')});
+}
 // this device's player now goes by a different name (renamed in the database): move the local save over
 function adoptName(n){
   const old=S.current,P=S.players[old],other=S.players[n];if(!P||n===old)return;
@@ -1083,9 +1098,9 @@ function adoptName(n){
 let boardTimer=0;
 let titleT=0;
 $('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
-$('#who').onclick=()=>showOver(mode==='map'?'name':'map');
+$('#who').onclick=()=>{if(mode==='name'){renaming=!renaming;showOver('name');$('#name').focus();return}showOver(mode==='map'?'name':'map')};
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
-$('#name').oninput=showPin;
+$('#name').oninput=()=>{$('#pin').hidden=true;$('#pin').value=''};   // a different name: the code box goes until a new clash is found
 $('#pin').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
 // ☰ during play: abandon the level and go to the map
