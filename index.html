@@ -41,8 +41,13 @@ text-shadow:0 0 12px rgba(255,59,47,.6);box-shadow:inset 0 3px 8px #000;min-widt
 .tag{background:var(--plate);color:#d6d9dc;border-radius:8px;padding:6px 10px;font:13px/1.2 "Barlow Condensed",sans-serif;letter-spacing:.02em}
 .tag b{display:block;font:18px/1.1 "Share Tech Mono",monospace;color:#fff;white-space:nowrap}
 .strikes{display:flex;gap:6px;align-items:center;background:var(--plate);border-radius:10px;padding:8px 12px}
-.strikes i{width:22px;height:22px;border-radius:50%;background:#46161a;box-shadow:inset 0 2px 4px #000}
-.strikes i.on{background:var(--red);box-shadow:0 0 12px var(--red)}
+.strikes{flex-direction:column;align-items:center;justify-content:center;gap:0;color:#d6d9dc;font:13px/1.2 "Barlow Condensed",sans-serif}
+.strikes b{font:24px/1.1 "Share Tech Mono",monospace;color:#fff}.strikes.bad b{color:var(--red)}
+.lcd{position:relative}
+.pen{position:absolute;left:50%;top:100%;transform:translateX(-50%);font:700 26px/1 "Share Tech Mono",monospace;color:#fff;background:var(--red);padding:4px 10px;border-radius:8px;
+white-space:nowrap;pointer-events:none;z-index:4;animation:pen 1.3s ease-out forwards;text-shadow:none}
+@keyframes pen{0%{opacity:0;transform:translate(-50%,-30px) scale(1.6)}15%{opacity:1;transform:translate(-50%,4px) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,24px)}}
+.lcd.hit{animation:hit .5s}@keyframes hit{0%,40%{background:#7a0e08}}
 .mods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media(max-width:560px){.mods{grid-template-columns:minmax(0,1fr)}.top{grid-template-columns:minmax(0,1fr) auto}.edge{grid-column:1/-1;order:3}}
 .mod{background:linear-gradient(#41484f,#353b41);border-radius:14px;padding:14px;min-height:250px;position:relative;
@@ -128,26 +133,62 @@ body.quake .wrap{animation:quake 1.4s cubic-bezier(.36,.07,.19,.97)}
 .device.blown{background:linear-gradient(160deg,#1d1a17,#0d0b09 60%);box-shadow:inset 0 0 60px #000,0 24px 40px -18px rgba(0,0,0,.55)}
 .device.blown .top{filter:sepia(.7) brightness(.4) contrast(1.3);transition:filter .3s}
 .device.blown .lcd{animation:none;color:#5a1510;text-shadow:none}
-@media(prefers-reduced-motion:reduce){.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
+/* final lock */
+.mods[hidden],.vault[hidden]{display:none}
+.mods.lift{transform-origin:50% 0;animation:lift .9s cubic-bezier(.5,0,.75,0) forwards}
+@keyframes lift{0%{transform:perspective(1000px) rotateX(0)}20%{transform:perspective(1000px) rotateX(8deg)}100%{transform:perspective(1000px) rotateX(-88deg) translateY(-30px);opacity:0}}
+.vault{min-height:520px;display:flex;flex-direction:column;}.vault .vgrid{flex:1;align-content:center}.vault{animation:rise .6s ease-out;background:radial-gradient(circle at 50% 0,#4a5259,#2e3338 70%)}
+@keyframes rise{from{opacity:0;transform:scale(.96)}}
+.vgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:560px){.vgrid{grid-template-columns:minmax(0,1fr)}}
+.vdisp{background:#0b170e;color:#46ff8a;font:clamp(32px,5vw,44px)/1.2 "Share Tech Mono",monospace;letter-spacing:.35em;text-indent:.35em;text-align:center;border-radius:8px;padding:10px;
+box-shadow:inset 0 3px 8px #000;text-shadow:0 0 10px rgba(70,255,138,.5);white-space:nowrap}
+.vdisp.err{color:var(--red);text-shadow:0 0 10px rgba(255,59,47,.6)}
+.vdisp.ok{background:#0e3a1d;color:#b8ffd0}
+.pinpad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.pin{min-height:52px;border:0;border-radius:8px;background:#1f2327;color:#e8eaec;font:24px "Share Tech Mono",monospace;box-shadow:0 4px 0 #0d0f11,inset 0 1px 0 #3a4046;cursor:pointer}
+.pin:active{transform:translateY(3px);box-shadow:0 1px 0 #0d0f11}
+.pin:focus-visible{outline:2px solid #fff}
+.pin.fn{font:700 17px "Barlow Condensed",sans-serif;background:#5b2620}.pin.ent{background:#1f5134}
+.maint{background:#23272b;border-radius:10px;padding:12px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.mlabel{font:14px "Barlow Condensed",sans-serif;color:#9aa2a9;margin-bottom:8px}
+.hwrap{position:relative;min-height:200px}
+.hwrap .wires{padding:8px 0}
+.wire.spark .cable{animation:spark .45s}
+@keyframes spark{0%,100%{filter:none}20%{filter:brightness(4) drop-shadow(0 0 8px #fff)}50%{filter:brightness(.5)}70%{filter:brightness(3) drop-shadow(0 0 6px #ffd36b)}}
+.plate{position:absolute;inset:0;border-radius:8px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 5px),linear-gradient(145deg,#79828a,#4d545a);
+box-shadow:inset 0 1px 0 #a0a8b0,0 6px 14px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:2;
+transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
+.plate.off{transform:translate(30px,320px) rotate(28deg);opacity:0;pointer-events:none}
+.warn{font:700 15px/1.2 "Barlow Condensed",sans-serif;color:#1d2125;border:2px solid #1d2125;padding:6px 10px;border-radius:4px;text-align:center;max-width:70%}
+.screw{position:absolute;width:44px;height:44px;border:0;padding:0;background:none;cursor:pointer;display:grid;place-items:center}
+.screw::before{content:"";width:20px;height:20px;border-radius:50%;background:linear-gradient(45deg,transparent 44%,#2a2f34 44% 56%,transparent 56%),linear-gradient(-45deg,transparent 44%,#2a2f34 44% 56%,transparent 56%),radial-gradient(circle at 35% 35%,#d9dee2,#7b838a);box-shadow:0 2px 3px rgba(0,0,0,.6)}
+.screw:hover::before{filter:brightness(1.15)}.screw:focus-visible{outline:2px solid #fff;border-radius:50%}
+.screw.out{animation:unscrew .6s forwards;pointer-events:none}
+@keyframes unscrew{60%{transform:rotate(-900deg) scale(1.3);opacity:1}100%{transform:rotate(-1080deg) scale(1.5) translateY(-20px);opacity:0}}
+.readout{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#15181b;border-radius:8px;padding:8px 12px;font:14px "Barlow Condensed",sans-serif;color:#9aa2a9}
+.readout b{font:24px "Share Tech Mono",monospace;color:#3d4247;letter-spacing:.2em;white-space:nowrap}
+.readout b.on{color:#46ff8a;text-shadow:0 0 10px rgba(70,255,138,.6)}
+@media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <h1>Defusal training rig</h1>
-  <p>Read the casing, check the field manual, and neutralise all four modules before the clock runs out. Three strikes and it's over. Play solo, or have a partner read the manual without seeing the device.</p>
+  <p>Read the casing, check the field manual, and neutralise all four modules, then crack the final lock behind the cover before the clock runs out. Every mistake costs time: 15, 30 or 60 seconds depending on difficulty. Play solo, or have a partner read the manual without seeing the device.</p>
 </header>
 <div class="grid">
 <section class="device" id="device" aria-label="Device">
   <span class="bolt" style="top:8px;left:8px"></span><span class="bolt" style="top:8px;right:8px"></span>
   <span class="bolt" style="bottom:8px;left:8px"></span><span class="bolt" style="bottom:8px;right:8px"></span>
   <div class="top">
-    <div class="lcd" id="clock" aria-live="off">5:00</div>
+    <div style="position:relative;display:grid"><div class="lcd" id="clock" aria-live="off">5:00</div></div>
     <div class="edge">
       <div class="tag">Serial<b id="serial">——</b></div>
       <div class="tag">Batteries<b id="batt">—</b></div>
     </div>
-    <div class="strikes" aria-label="Strikes"><i></i><i></i><i></i></div>
+    <div class="strikes" id="mist" aria-label="Mistakes">Mistakes<b>0</b></div>
   </div>
   <div class="mods">
     <div class="mod" id="m-wires"><h3>Wires</h3><span class="led"></span><div class="wires" id="wires"></div></div>
@@ -156,14 +197,34 @@ body.quake .wrap{animation:quake 1.4s cubic-bezier(.36,.07,.19,.97)}
     <div class="mod" id="m-keys"><h3>Keypad</h3><span class="led"></span><div class="keys" id="keys"></div></div>
     <div class="mod" id="m-pulse"><h3>Pulse</h3><span class="led"></span><div class="pads" id="pads"></div><div class="stage" id="stage">Stage 1 of 3</div></div>
   </div>
+  <div class="vault mod" id="m-final" hidden><h3>Final lock</h3><span class="led"></span>
+    <div class="vgrid">
+      <div>
+        <div class="vdisp" id="vdisp" aria-live="polite">····</div>
+        <div class="pinpad" id="pinpad"><button class="pin" data-k="1">1</button><button class="pin" data-k="2">2</button><button class="pin" data-k="3">3</button><button class="pin" data-k="4">4</button><button class="pin" data-k="5">5</button><button class="pin" data-k="6">6</button><button class="pin" data-k="7">7</button><button class="pin" data-k="8">8</button><button class="pin" data-k="9">9</button><button class="pin fn" data-k="C">CLR</button><button class="pin" data-k="0">0</button><button class="pin fn ent" data-k="E">ENT</button></div>
+      </div>
+      <div class="maint">
+        <div class="mlabel">Maintenance bypass: lock harness</div>
+        <div class="hwrap">
+          <div class="wires" id="harness"></div>
+          <div class="plate" id="plate">
+            <span class="warn">Authorised technicians only. Remove 4 screws.</span>
+            <button class="screw" style="top:2px;left:2px" aria-label="Screw"></button><button class="screw" style="top:2px;right:2px" aria-label="Screw"></button>
+            <button class="screw" style="bottom:2px;left:2px" aria-label="Screw"></button><button class="screw" style="bottom:2px;right:2px" aria-label="Screw"></button>
+          </div>
+        </div>
+        <div class="readout">Code memory <b id="mem">----</b></div>
+      </div>
+    </div>
+  </div>
   <div class="over" id="over">
     <div>
       <h2 id="oTitle">Ready to defuse?</h2>
-      <p id="oText">Pick your time limit. The timer speeds up with every strike.</p>
+      <p id="oText">Pick a difficulty. Harder levels give you less time and bigger penalties for mistakes.</p>
       <div class="row" id="times" style="margin-bottom:12px">
-        <button class="cta alt" data-t="420">7:00 Recruit</button>
-        <button class="cta alt" data-t="300" aria-pressed="true">5:00 Standard</button>
-        <button class="cta alt" data-t="180">3:00 Expert</button>
+        <button class="cta alt" data-t="420">7:00 Recruit · −15s</button>
+        <button class="cta alt" data-t="300" aria-pressed="true">5:00 Standard · −30s</button>
+        <button class="cta alt" data-t="180">3:00 Expert · −60s</button>
       </div>
       <button class="cta" id="go">Arm the device</button>
     </div>
@@ -172,7 +233,7 @@ body.quake .wrap{animation:quake 1.4s cubic-bezier(.36,.07,.19,.97)}
 
 <aside class="manual" aria-label="Field manual">
   <h2>Field manual</h2>
-  <p class="sub">Modules can be solved in any order. A wrong action is a strike.</p>
+  <p class="sub">Modules can be solved in any order. A wrong action takes time off the clock.</p>
   <div class="tabs" role="tablist" id="tabs"></div>
   <div id="page"></div>
 </aside>
@@ -200,6 +261,7 @@ const PC=['red','blue','green','yellow'];
 const PMAP=[
  [{red:'blue',blue:'yellow',green:'green',yellow:'red'},{red:'red',blue:'blue',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'}],
  [{red:'blue',blue:'red',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'},{red:'green',blue:'red',green:'yellow',yellow:'blue'}]];
+const PENALTIES={420:15000,300:30000,180:60000};let PENALTY=30000;
 const HOLDDIGIT={blue:'4',yellow:'5',green:'2',red:'1'};
 
 /* ---------- state ---------- */
@@ -225,7 +287,7 @@ function buttonAction(color,label,batt){
 function makeKeys(){
   for(;;){const c=rnd(KEYCOLS.length),pickd=shuffle(KEYCOLS[c]).slice(0,4);
     const fits=KEYCOLS.filter(col=>pickd.every(s=>col.includes(s)));
-    if(fits.length===1)return{order:KEYCOLS[c].filter(s=>pickd.includes(s)),shown:shuffle(pickd),hits:0}}
+    if(fits.length===1)return{col:c,order:KEYCOLS[c].filter(s=>pickd.includes(s)),shown:shuffle(pickd),hits:0}}
 }
 
 function newGame(){
@@ -237,6 +299,9 @@ function newGame(){
     btn:{color,label,action:buttonAction(color,label,batt),downAt:0,strip:null,timer:0},
     keys:makeKeys(),
     pulse:{seq:[pick(PC),pick(PC),pick(PC)],stage:1,idx:0}};
+  G.code=''+(G.wireAns+1)+((batt+label.length)%10)+(G.keys.col+1)+([...serial].filter(ch=>/\d/.test(ch)).reduce((a,b)=>a+ +b,0)%10);
+  G.stage='modules';G.entry='';G.busy=false;G.bypassed=false;
+  G.harn={cols:shuffle(Object.keys(COL)).slice(0,5),cut:new Set(),screws:0};
   render();
 }
 
@@ -249,9 +314,13 @@ function render(){
   $('#keys').innerHTML=G.keys.shown.map(s=>`<button class="key" data-s="${s}" aria-label="Symbol ${s}">${s}</button>`).join('');
   $('#pads').innerHTML=PC.map(c=>`<button class="pad" data-c="${c}" aria-label="${c} pad" style="background:${COL[c]};color:${COL[c]}"></button>`).join('');
   document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done'));
+  const mods=$('.mods');mods.hidden=false;mods.classList.remove('lift');$('#m-final').hidden=true;
+  $('#harness').innerHTML=G.harn.cols.map((c,i)=>`<button class="wire" data-c="${c}" aria-label="Harness wire ${'ABCDE'[i]}, ${c}"><span class="n">${'ABCDE'[i]}</span><span class="cable" style="background:${COL[c]}"></span><span class="post"></span></button>`).join('');
+  $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
+  const m=$('#mem');m.classList.remove('on');m.textContent='----';drawEntry();
   drawStrikes();drawStage();drawClock();
 }
-const drawStrikes=()=>document.querySelectorAll('.strikes i').forEach((e,i)=>e.classList.toggle('on',i<G.strikes));
+const drawStrikes=()=>{const m=$('#mist');m.querySelector('b').textContent=G.strikes;m.classList.toggle('bad',G.strikes>0)};
 const drawStage=()=>$('#stage').textContent=G.solved.has('pulse')?'Complete':`Stage ${G.pulse.stage} of 3`;
 const clockText=()=>{const s=Math.max(0,Math.ceil(G.left/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const drawClock=()=>$('#clock').textContent=clockText();
@@ -259,18 +328,21 @@ const drawClock=()=>$('#clock').textContent=clockText();
 /* ---------- game flow ---------- */
 function strike(){
   if(G.over)return;G.strikes++;drawStrikes();beep(110,.35,'sawtooth',.09);
+  G.left-=PENALTY;drawClock();
+  const lcd=$('#clock'),pen=document.createElement('span');pen.className='pen';const ps=PENALTY/1000;pen.textContent='−'+Math.floor(ps/60)+':'+String(ps%60).padStart(2,'0');
+  lcd.parentNode.appendChild(pen);setTimeout(()=>pen.remove(),1300);lcd.classList.remove('hit');void lcd.offsetWidth;lcd.classList.add('hit');
   const d=$('#device');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');
-  if(G.strikes>=3)end(false,'Three strikes.');
+  if(G.left<=0){G.left=0;drawClock();end(false,'That last mistake used up the clock.')}
 }
 function solve(id){
   if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
-  if(G.solved.size===4)end(true);
+  if(G.solved.size===4)setTimeout(openCover,700);
 }
 function end(win,why){
   G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);
   const t=clockText();
   $('#oTitle').textContent=win?'Device defused':'Boom.';
-  $('#oText').textContent=win?`All four modules neutralised with ${t} left and ${G.strikes} strike${G.strikes===1?'':'s'}.`:`${why} The serial was ${G.serial}. Study the manual and try again.`;
+  $('#oText').textContent=win?`Final lock opened${G.bypassed?' through the maintenance bypass':''} with ${t} left and ${G.strikes} mistake${G.strikes===1?'':'s'}.`:`${why} The serial was ${G.serial}. Study the manual and try again.`;
   $('#go').textContent='Play again';
   if(win){$('#over').classList.remove('lost');$('#over').hidden=false;[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120))}
   else{$('#over').classList.add('lost');explode(()=>{$('#over').hidden=false})}
@@ -436,7 +508,7 @@ function explode(onDone){
 function loop(prev){
   raf=requestAnimationFrame(now=>{
     if(G.over)return;
-    G.left-=(now-prev)*(1+.25*G.strikes);
+    G.left-=now-prev;
     const sec=Math.ceil(G.left/1000);
     if(sec!==lastTick){lastTick=sec;beep(sec<=10?1500:1000,.03,'square',.025)}
     drawClock();
@@ -449,7 +521,7 @@ function start(){
   newGame();$('#over').hidden=true;lastTick=-1;resetFX();
   const p=performance.now();loop(p);schedFlash(600);
 }
-document.querySelectorAll('#times button').forEach(b=>b.onclick=()=>{limit=+b.dataset.t;document.querySelectorAll('#times button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+document.querySelectorAll('#times button').forEach(b=>b.onclick=()=>{limit=+b.dataset.t;PENALTY=PENALTIES[limit];document.querySelectorAll('#times button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
 $('#go').onclick=start;
 
 /* ---------- wires ---------- */
@@ -516,13 +588,62 @@ $('#pads').onclick=e=>{
   }else{P.idx=0;strike();if(!G.over)schedFlash(1200)}
 };
 
+
+/* ---------- final lock ---------- */
+const BYPASS={1:['red','blue','yellow','white','black','green'],2:['black','yellow','green','red','white','blue'],3:['white','green','red','black','blue','yellow']};
+function nextHarness(){return BYPASS[G.batt].find(c=>G.harn.cols.includes(c)&&!G.harn.cut.has(c))}
+function drawEntry(){const d=$('#vdisp');d.className='vdisp';d.textContent=(G.entry+'····').slice(0,4)}
+function openCover(){
+  if(G.over)return;G.stage='final';
+  const mods=$('.mods');mods.classList.add('lift');
+  try{if(ac){noiseBurst(ac.currentTime,.7,6000,800,.25,1.2);beep(70,.25,'square',.08)}}catch(e){}
+  setTimeout(()=>{if(G.stage!=='final')return;mods.hidden=true;$('#m-final').hidden=false;beep(220,.12,'square',.05)},900);
+}
+function pressPin(k){
+  if(!G||G.over||G.stage!=='final'||G.busy)return;
+  const d=$('#vdisp');
+  if(k==='C'){G.entry='';drawEntry();beep(300,.04);return}
+  if(k==='B'){G.entry=G.entry.slice(0,-1);drawEntry();beep(300,.04);return}
+  if(k!=='E'){if(G.entry.length<4){G.entry+=k;drawEntry();beep(700+ +k*40,.05)}return}
+  if(G.entry===G.code){
+    G.over=true;cancelAnimationFrame(raf);d.textContent='SAFE';d.className='vdisp ok';$('#m-final').classList.add('done');
+    [784,988,1175].forEach((f,i)=>setTimeout(()=>beep(f,.15,'sine',.08),i*100));
+    setTimeout(()=>{G.over=false;end(true)},1100);
+  }else{
+    G.busy=true;d.textContent='ERR';d.className='vdisp err';strike();
+    setTimeout(()=>{G.busy=false;G.entry='';if(G.stage==='final')drawEntry()},800);
+  }
+}
+$('#pinpad').onclick=e=>{const b=e.target.closest('.pin');if(b)pressPin(b.dataset.k)};
+document.addEventListener('keydown',e=>{
+  if(!G||G.over||G.stage!=='final'||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.target.closest&&e.target.closest('.pin')&&(e.key==='Enter'||e.key===' '))return;
+  if(/^[0-9]$/.test(e.key))pressPin(e.key);else if(e.key==='Enter'){e.preventDefault();pressPin('E')}else if(e.key==='Backspace'){e.preventDefault();pressPin('B')}else if(e.key==='Escape')pressPin('C');
+});
+$('#plate').onclick=e=>{
+  const s=e.target.closest('.screw');if(!s||!G||G.over||s.classList.contains('out'))return;
+  s.classList.add('out');G.harn.screws++;beep(1200,.03,'square',.03);setTimeout(()=>beep(900,.03,'square',.03),120);
+  if(G.harn.screws===4)setTimeout(()=>{$('#plate').classList.add('off');try{ac&&noiseBurst(ac.currentTime+.6,.15,3000,600,.4,1)}catch(e){}},500);
+};
+$('#harness').onclick=e=>{
+  const w=e.target.closest('.wire');if(!w||!G||G.over||G.harn.screws<4||w.classList.contains('cut'))return;
+  const c=w.dataset.c;
+  if(c===nextHarness()){
+    G.harn.cut.add(c);w.classList.add('cut');beep(300,.05,'triangle',.06);
+    if(G.harn.cut.size===G.harn.cols.length){
+      G.bypassed=true;const m=$('#mem');m.classList.add('on');m.textContent='';
+      [...G.code].forEach((ch,i)=>setTimeout(()=>{m.textContent+=ch;beep(1000+i*150,.06,'square',.04)},400+i*350));
+    }
+  }else{w.classList.remove('spark');void w.offsetWidth;w.classList.add('spark');try{ac&&noiseBurst(ac.currentTime,.25,9000,2000,.35,1)}catch(e){}strike()}
+};
+
 /* ---------- manual ---------- */
 const sw=c=>`<span class="sw" style="background:${COL[c]};outline:1px solid #0003"></span>${cap(c)}`;
 const PAGES={
  'Casing':`<h3>Reading the casing</h3><ol>
   <li><b>Serial number</b>: six characters on the plate. The last character is always a digit. Vowels are A, E, I, O, U.</li>
   <li><b>Batteries</b>: the count shown beside the serial.</li>
-  <li><b>Strikes</b>: each mistake lights a lamp and makes the timer run 25% faster. The third strike detonates the device.</li>
+  <li><b>Mistakes</b>: every wrong action knocks time off the timer: 15 seconds on Recruit, 30 on Standard, 60 on Expert. The device detonates only when the timer hits zero.</li>
   <li>When a module is solved, its lamp turns green.</li></ol>
   <p class="note">Tip: play with a partner. One person sees only the device and describes it; the other sees only this manual.</p>`,
  'Wires':`<h3>Wires</h3><p>Cut exactly one wire. Wires are numbered from the top. Use the first rule that applies:</p><ol>
@@ -542,12 +663,21 @@ const PAGES={
  'Keypad':`<h3>Keypad</h3><p>Exactly one column below contains all four symbols on the keypad. Press the four keys in the order they appear in that column, top to bottom.</p>
   <div class="scroll"><table><thead><tr>${KEYCOLS.map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
   ${KEYCOLS[0].map((_,r)=>`<tr>${KEYCOLS.map(c=>`<td class="sym">${c[r]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`,
- 'Pulse':`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order. Each stage adds one flash; clear three stages. The answer depends on whether the serial contains a vowel and on your <b>current</b> strike count.</p>
-  ${[1,0].map(v=>`<p style="margin:14px 0 0"><b>Serial ${v?'has':'has no'} vowel</b></p><div class="scroll"><table><thead><tr><th>Flash</th><th>0 strikes</th><th>1 strike</th><th>2 strikes</th></tr></thead><tbody>
-  ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`
+ 'Pulse':`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order. Each stage adds one flash; clear three stages. The answer depends on whether the serial contains a vowel and on how many mistakes you have made <b>so far</b>.</p>
+  ${[1,0].map(v=>`<p style="margin:14px 0 0"><b>Serial ${v?'has':'has no'} vowel</b></p><div class="scroll"><table><thead><tr><th>Flash</th><th>0 mistakes</th><th>1 mistake</th><th>2 or more</th></tr></thead><tbody>
+  ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`,
+ 'Final lock':`<h3>Final lock</h3><p>When all four modules are solved, the cover opens on the final lock. Enter its four-digit code and press ENT (a keyboard works too). A wrong code counts as a mistake.</p>
+  <p><b>Working out the code</b></p><ol>
+  <li>First digit: the number of the wire you correctly cut in the Wires module.</li>
+  <li>Second digit: the battery count plus the number of letters on the button's label. If the total is 10 or more, use its last digit.</li>
+  <li>Third digit: the number of the Keypad column you used.</li>
+  <li>Fourth digit: add up all the digits in the serial number and use the last digit of the total.</li></ol>
+  <p><b>Maintenance bypass</b></p><p>If you can't work out the code, remove the four screws on the maintenance plate and disconnect the lock's harness instead. Cut the wires in the order below for your battery count, skipping any colours that aren't there. A wrong cut sparks and counts as a mistake. Once every wire is cut, the lock's memory shows the code. Enter it to finish.</p>
+  <div class="scroll"><table><thead><tr><th>Batteries</th><th style="text-align:start">Cut order</th></tr></thead><tbody>
+  ${[1,2,3].map(b=>`<tr><td><b>${b}</b></td><td style="text-align:start">${BYPASS[b].map(sw).join(' → ')}</td></tr>`).join('')}</tbody></table></div>`
 };
 const names=Object.keys(PAGES);
-$('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${n}" aria-selected="${i===0}">${n}</button>`).join('');
+$('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${i}" aria-selected="${i===0}">${n}</button>`).join('');
 const show=n=>{$('#page').innerHTML=PAGES[n];document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.textContent===n))};
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.textContent)};
 show('Casing');
