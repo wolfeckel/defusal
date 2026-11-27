@@ -1086,7 +1086,8 @@ function renameMe(v){
 }
 // this device's player now goes by a different name (renamed here, or in the database): move the local save over
 function adoptName(n){
-  const old=S.current,P=S.players[old];if(!P||n===old||(S.players[n]&&S.players[n]!==P))return;
+  const old=S.current,P=S.players[old],other=S.players[n];if(!P||n===old)return;
+  if(other&&other!==P&&Object.keys(other.best||{}).length)return;   // an empty profile with that name (started by mistake) is replaced
   S.players[n]=P;delete S.players[old];S.current=n;save();drawTop();
 }
 let boardTimer=0;
