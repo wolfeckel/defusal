@@ -356,7 +356,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
+<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Levels">☰</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -997,7 +997,8 @@ function goBack(){
   if(mode==='board'&&boardFrom==='brief'){reBrief();return}
   showOver('map');
 }
-$('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
+// ☰ Levels: straight to the level map from anywhere (mid-level it abandons the attempt)
+$('#back').onclick=()=>{audioOn();SFX.click(1000);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}resetFX();showOver('map')};
 // ↻ mid-level: throw this attempt away and start the same level again
 $('#me').onclick=()=>{audioOn();SFX.click(1400);showOver('name')};
 $('#restart').onclick=()=>{audioOn();SFX.click(1200);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}start()};
