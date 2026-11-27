@@ -246,6 +246,16 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .codebig.long{letter-spacing:.1em;text-indent:.1em;font-size:clamp(30px,8vw,42px)}
 .pad.pop{animation:padpop .18s ease-out}@keyframes padpop{from{transform:scale(.8)}}
 .pad.bad{animation:bad .4s}
+/* mute + leaderboard */
+.mute{position:fixed;top:10px;right:12px;z-index:45}
+.board{list-style:none;margin:0 0 18px;padding:0;text-align:left;display:flex;flex-direction:column;gap:6px}
+.board[hidden]{display:none}
+.board li{display:grid;grid-template-columns:38px minmax(0,1fr) 62px 70px;gap:10px;align-items:center;background:rgba(0,0,0,.32);border-radius:12px;padding:9px 12px;font:600 18px Barlow,sans-serif}
+.board li b{font:20px "Share Tech Mono",monospace;color:#f2c230;text-align:center}
+.board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board .lvn,.board .st{text-align:right}.board .lvn{font:17px "Share Tech Mono",monospace;color:#b8ffd0}.board .st{font:17px "Share Tech Mono",monospace;color:#f2c230}
+.board li.me{outline:2px solid #f2c230;background:rgba(242,194,48,.12)}
+.board li.msg,.board li.gap{display:block;text-align:center;background:none;color:#c6cbd0;font-weight:400}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -292,6 +302,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
+<button class="ib mute" id="mute" aria-label="Sound on">🔊</button>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -300,6 +311,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="chips" id="chips"></div>
     <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
+    <ol class="board" id="board" aria-label="Leaderboard" hidden></ol>
     <div class="row"><button class="cta" id="go">PLAY</button><button class="cta alt" id="alt" hidden>↻ Replay</button></div>
     <button class="link" id="who" hidden></button>
   </div>
@@ -314,9 +326,38 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[
 const cap=s=>s[0].toUpperCase()+s.slice(1);
 
 /* ---------- sound ---------- */
-let ac=null;
+let ac=null,master=null;
 const beep=(f,d=.08,type='square',v=.05)=>{if(!ac)return;try{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;
-g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}};
+g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(master);o.start();o.stop(ac.currentTime+d)}catch(e){}};
+// one master volume so the mute button silences everything
+function audioOn(){
+  try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}   // iPhone: play even with the silent switch on
+  if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.connect(ac.destination)}catch(e){ac=null;return}}
+  try{ac.resume&&ac.resume()}catch(e){}
+  master.gain.value=S.muted?0:1;
+}
+// named sound effects, all synthesised (no audio files)
+const SFX={
+  snip(){if(!ac)return;try{noiseBurst(ac.currentTime,.06,9000,3000,.35,1)}catch(e){}beep(2200,.03,'triangle',.05)},
+  thunk(){if(!ac)return;beep(140,.09,'sine',.25);try{noiseBurst(ac.currentTime,.03,1500,400,.15,1)}catch(e){}},
+  click(f=1800){if(!ac)return;beep(f,.015,'square',.05);try{noiseBurst(ac.currentTime,.012,8000,4000,.1,1)}catch(e){}},
+  key(n){if(!ac)return;try{noiseBurst(ac.currentTime,.02,6000,2000,.22,1)}catch(e){}beep(900+n*120,.05,'triangle',.06)},
+  clack(up){if(!ac)return;try{noiseBurst(ac.currentTime,.025,5000,1500,.3,1)}catch(e){}beep(up?900:650,.03,'square',.05)},
+  ratchet(v=.18){if(!ac)return;try{noiseBurst(ac.currentTime,.012,7000,3000,v,1)}catch(e){}beep(1500,.01,'square',.03)},
+  blip(f){beep(f,.09,'sine',.09);beep(f*2,.05,'sine',.03)},
+  step(){beep(700,.06,'sine',.07);setTimeout(()=>beep(1050,.06,'sine',.06),60)},
+  heart(){beep(55,.12,'sine',.35);setTimeout(()=>beep(48,.12,'sine',.28),150)},
+  arm(){if(!ac)return;try{const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(900,t+.3);
+    g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+.35);o.connect(g).connect(master);o.start(t);o.stop(t+.36)}catch(e){}setTimeout(()=>beep(1200,.08,'square',.05),320)}
+};
+// the button hum: rises with the meter while you hold
+let hum=null;
+function holdHum(on){
+  if(!ac)return;
+  if(on&&!hum){try{const o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';o.frequency.value=160;f.type='lowpass';f.frequency.value=1400;g.gain.value=.035;
+    o.connect(f).connect(g).connect(master);o.start();hum={o,g}}catch(e){}}
+  if(!on&&hum){try{hum.g.gain.setTargetAtTime(0,ac.currentTime,.02);hum.o.stop(ac.currentTime+.15)}catch(e){}hum=null}
+}
 
 /* ---------- shared data ---------- */
 const SYMS=['Ω','ζ','¶','★','Ж','‡','λ','∞','Ψ','☾','¿','©','ξ','Φ','∂','Δ','¥','Б','☼','Ѣ','¤','∇','§','Я','≈'];
@@ -578,7 +619,7 @@ function end(win,why){
     const left=Math.ceil(G.left/1000),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
     G.result={stars,beat:!!b&&(stars>b.s||(stars===b.s&&left>b.t))};
     if(!b||G.result.beat)P.best[lvl]={s:stars,t:left};
-    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();
+    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();submitScore();
     showOver('win');celebrate();
     [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120));
     for(let i=0;i<stars;i++)setTimeout(()=>beep(1046+i*260,.12,'triangle',.07),650+i*250);
@@ -586,7 +627,40 @@ function end(win,why){
   else{$('#over').hidden=true;explode(()=>showOver('lose',why))}
 }
 
-/* ---------- overlay screens: name · map · brief · win · lose ---------- */
+/* ---------- online leaderboard (Supabase) ---------- */
+// Fill these in from Supabase → Project Settings → API. Both are safe to publish: the key can only call the
+// three functions in supabase/leaderboard.sql, never read or edit the scores table directly.
+const LB={url:'',key:''};
+const lbOn=()=>!!(LB.url&&LB.key);
+function lbCall(fn,body){
+  const h={apikey:LB.key,'Content-Type':'application/json'};if(LB.key.startsWith('eyJ'))h.Authorization='Bearer '+LB.key;
+  return fetch(`${LB.url}/rest/v1/rpc/${fn}`,{method:'POST',headers:h,body:JSON.stringify(body)}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.status===204?null:r.json()});
+}
+const totals=P=>({levels:Object.keys(P.best).length,stars:Object.values(P.best).reduce((a,b)=>a+b.s,0)});
+const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)});
+function pid(){const P=prof();if(!P.id){P.id=uuid();save()}return P.id}
+// send this player's totals (the server only ever keeps the higher numbers)
+function submitScore(){
+  if(!lbOn()||!S.current)return;const t=totals(prof());if(!t.levels)return;
+  lbCall('submit_score',{p_id:pid(),p_name:S.current,p_levels:t.levels,p_stars:t.stars}).catch(()=>{});
+}
+const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>ESC[c]);
+const MEDAL=['🥇','🥈','🥉'];
+async function drawBoard(){
+  const b=$('#board');b.innerHTML='<li class="msg">Loading…</li>';
+  try{
+    const [top,me]=await Promise.all([lbCall('top_scores',{n:50}),S.current?lbCall('my_rank',{p_id:pid()}):null]);
+    if(mode!=='board')return;
+    const row=(pos,name,lv,st,mine)=>`<li class="${mine?'me':''}"><b>${MEDAL[pos-1]||pos}</b><span class="nm">${esc(name)}</span><span class="lvn">✓ ${lv}</span><span class="st">★ ${st}</span></li>`;
+    let html=(top||[]).map(r=>row(r.pos,r.name,r.levels,r.stars,r.pos===me)).join('');
+    if(me&&me>(top||[]).length){const t=totals(prof());html+=`<li class="gap">⋯</li>`+row(me,S.current,t.levels,t.stars,true)}
+    b.innerHTML=html||'<li class="msg">No scores yet. Clear a level to be first!</li>';
+    $('#oTop').innerHTML=kick(me?`You’re #${me}`:'🏆 Top 50');
+  }catch(e){if(mode==='board')b.innerHTML='<li class="msg">Couldn’t load the leaderboard. Check your connection and try again.</li>'}
+}
+
+/* ---------- overlay screens: name · map · brief · win · lose · board ---------- */
 let mode='name';
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 const kick=t=>`<div class="kicker">${t}</div>`;
@@ -606,7 +680,7 @@ function drawLvls(){
 function showOver(m,why){
   mode=m;const L=LEVELS[lvl],n=lvl+1,o=$('#over'),last=lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current}
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`);title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
   if(m==='brief'){top=kick(`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
@@ -616,8 +690,10 @@ function showOver(m,why){
     text=last?'All 100 levels defused.':'';
     chips=chip('⏱ '+clockText())+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
   if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY';link='All levels'}
+  if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK';drawBoard()}
   o.classList.toggle('lost',m==='lose');
-  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#alt').hidden=m!=='win';
+  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';
+  const alt=$('#alt');alt.hidden=!(m==='win'||(m==='map'&&lbOn()));alt.textContent=m==='map'?'🏆 Leaderboard':'↻ Replay';
   const w=$('#who');w.hidden=!link;w.textContent=link;
   $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
@@ -627,15 +703,17 @@ function showOver(m,why){
 function preview(){resetFX();newGame();G.over=true}
 const toBrief=i=>{lvl=i;preview();showOver('brief')};
 $('#go').onclick=()=>{
+  audioOn();SFX.click(1400);
   if(mode==='name'){
     const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
     S.current=v;const P=prof();save();
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
+  if(mode==='board'){showOver('map');return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
-$('#alt').onclick=()=>start();
+$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='map')showOver('board');else start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
@@ -662,7 +740,7 @@ function noiseBurst(t,dur,f0,f1,vol,shape=2.2){
   for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,shape);
   const s=ac.createBufferSource();s.buffer=buf;const lp=ac.createBiquadFilter();lp.type='lowpass';
   lp.frequency.setValueAtTime(f0,t);lp.frequency.exponentialRampToValueAtTime(f1,t+dur*.8);
-  const g=ac.createGain();g.gain.value=vol;s.connect(lp).connect(g).connect(ac.destination);s.start(t);
+  const g=ac.createGain();g.gain.value=vol;s.connect(lp).connect(g).connect(master);s.start(t);
 }
 function boom(scale=1,delay=0){
   if(!ac)return;try{
@@ -672,7 +750,7 @@ function boom(scale=1,delay=0){
     for(let i=0;i<256;i++){const x=i/128-1;curve[i]=Math.tanh(x*4)}ws.curve=curve;
     o.type='sine';o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(24,t+1.4*scale);
     og.gain.setValueAtTime(.9*scale,t);og.gain.exponentialRampToValueAtTime(.001,t+1.8*scale);
-    o.connect(ws).connect(og).connect(ac.destination);o.start(t);o.stop(t+2);
+    o.connect(ws).connect(og).connect(master);o.start(t);o.stop(t+2);
   }catch(e){}
 }
 function debrisSound(){if(!ac)return;try{for(let i=0;i<14;i++){const t=ac.currentTime+.4+Math.random()*1.8;noiseBurst(t,.06+Math.random()*.08,9000,2500,.12+Math.random()*.15,1.5)}}catch(e){}}
@@ -816,16 +894,16 @@ function loop(prev){
     if(G.over)return;
     G.left-=now-prev;
     const sec=Math.ceil(G.left/1000);
-    if(sec!==lastTick){lastTick=sec;beep(sec<=10?1500:1000,.03,'square',.025)}
+    if(sec!==lastTick){lastTick=sec;if(sec<=10)SFX.heart();else beep(1000,.03,'square',.025)}
     drawClock();
     if(G.left<=0){G.left=0;drawClock();end(false,'Time ran out.');return}
     loop(now);
   });
 }
 function start(){
-  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){ac=null}
+  audioOn();
   newGame();$('#over').hidden=true;lastTick=-1;resetFX();scrollTo(0,0);
-  const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);
+  const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
   if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
 }
@@ -836,10 +914,10 @@ $('#wires').onclick=e=>{
   const w=e.target.closest('.wire');if(!w||G.over||G.solved.has('wires'))return;
   const i=+w.dataset.i,Wd=G.w,st=Wd.steps[Wd.step];if(Wd.cut.has(i))return;
   if(st.ans.includes(i)){
-    Wd.cut.add(i);w.classList.add('cut');beep(300,.05,'triangle',.06);
+    Wd.cut.add(i);w.classList.add('cut');SFX.snip();
     if(!st.ans.every(j=>Wd.cut.has(j)))return;           // "CUT ALL …" still has wires left
     Wd.step++;
-    if(Wd.step===Wd.steps.length)solve('wires');else{beep(700,.06,'sine',.06);CLUE.wires();peek('wires')}
+    if(Wd.step===Wd.steps.length)solve('wires');else{SFX.step();CLUE.wires();peek('wires')}
   }else{spark(w);strike('wires')}
 };
 
@@ -847,18 +925,19 @@ $('#wires').onclick=e=>{
 const big=$('#big');let meterRaf=0;
 function down(){
   if(!G||G.over||G.solved.has('button')||G.btn.downAt)return;
-  const Bt=G.btn;Bt.downAt=performance.now();big.classList.add('down');beep(400,.04);
-  if(Bt.kind==='hold'){const t0=Bt.downAt;(function m(){const s=(performance.now()-t0)/1000,t=s/Bt.speed;Bt.fill=(1-Math.abs(1-t%2))*100;$('#fill').style.height=Bt.fill+'%';
+  const Bt=G.btn;Bt.downAt=performance.now();big.classList.add('down');SFX.thunk();
+  if(Bt.kind==='hold'){holdHum(true);let inZ=false;const t0=Bt.downAt;(function m(){const s=(performance.now()-t0)/1000,t=s/Bt.speed;Bt.fill=(1-Math.abs(1-t%2))*100;$('#fill').style.height=Bt.fill+'%';
     if(Bt.slide){const lo=10,hi=90-Bt.size,mid=(lo+hi)/2,amp=(hi-lo)/2,z=mid+amp*Math.sin(Bt.ph+s*6.283/Bt.slide);Bt.cur=[z,z+Bt.size];drawZone()}
+    if(hum)hum.o.frequency.value=160+Bt.fill*6;const z=Bt.fill>=Bt.cur[0]&&Bt.fill<=Bt.cur[1];if(z&&!inZ)SFX.click(2400);inZ=z;
     meterRaf=requestAnimationFrame(m)})()}
 }
 function up(){
   if(!G||!G.btn.downAt)return;
-  const Bt=G.btn,dt=performance.now()-Bt.downAt;Bt.downAt=0;big.classList.remove('down');cancelAnimationFrame(meterRaf);
+  const Bt=G.btn,dt=performance.now()-Bt.downAt;Bt.downAt=0;big.classList.remove('down');cancelAnimationFrame(meterRaf);holdHum(false);
   if(G.over)return;
   if(Bt.kind==='hold'){const ok=Bt.fill>=Bt.cur[0]&&Bt.fill<=Bt.cur[1];if(!ok){$('#fill').style.height='0%';strike('button')}else solve('button');return}
   if(dt>450){strike('button');return}
-  Bt.left--;if(Bt.left<=0)solve('button');else{beep(600+(Bt.n-Bt.left)*120,.05,'square',.05);CLUE.button()}
+  Bt.left--;if(Bt.left<=0)solve('button');else{SFX.click(900+(Bt.n-Bt.left)*200);CLUE.button()}
 }
 big.addEventListener('pointerdown',e=>{e.preventDefault();big.setPointerCapture?.(e.pointerId);down()});
 big.addEventListener('pointerup',up);big.addEventListener('pointercancel',up);
@@ -870,7 +949,7 @@ big.addEventListener('contextmenu',e=>e.preventDefault());
 $('#keys').onclick=e=>{
   const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit'))return;
   const Kd=G.keys,want=Kd.rev?Kd.seq[Kd.seq.length-1-Kd.hits]:Kd.seq[Kd.hits];
-  if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;beep(650+Kd.hits*80,.05);if(Kd.hits===Kd.seq.length)solve('keys');else CLUE.keys()}
+  if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;SFX.key(Kd.hits);if(Kd.hits===Kd.seq.length)solve('keys');else CLUE.keys()}
   else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike('keys')}
 };
 
@@ -883,7 +962,7 @@ $('#pads').onclick=e=>{
   const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse'))return;
   const want=Pd.rev?OPP[Pd.lit]:Pd.lit;
   if(p.dataset.c===want){
-    Pd.hits++;beep(TONE[p.dataset.c]+Pd.hits*20,.08,'sine',.06);
+    Pd.hits++;SFX.blip(TONE[p.dataset.c]+Pd.hits*20);
     if(Pd.hits>=Pd.n){lightPad(null);solve('pulse');return}
     Pd.lit=pick(PC.filter(c=>c!==Pd.lit));lightPad(Pd.lit);CLUE.pulse();
   }else{p.classList.remove('bad');void p.offsetWidth;p.classList.add('bad');strike('pulse')}
@@ -894,7 +973,7 @@ $('#sws').onclick=e=>{
   const s=e.target.closest('.sw2');if(!s||G.over||G.solved.has('switches'))return;
   const Sd=G.sw,i=+s.dataset.i;
   if(Sd.state[i]===Sd.target[i]){s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');strike('switches');return}
-  Sd.state[i]=!Sd.state[i];s.classList.toggle('up',Sd.state[i]);s.setAttribute('aria-label',`Switch ${i+1}, ${Sd.state[i]?'up':'down'}`);beep(Sd.state[i]?900:700,.04,'square',.05);
+  Sd.state[i]=!Sd.state[i];s.classList.toggle('up',Sd.state[i]);s.setAttribute('aria-label',`Switch ${i+1}, ${Sd.state[i]?'up':'down'}`);SFX.clack(Sd.state[i]);
   if(Sd.state.every((u,j)=>u===Sd.target[j]))solve('switches');
 };
 
@@ -902,14 +981,14 @@ $('#sws').onclick=e=>{
 function turnDial(d){const Dd=G.dial;Dd.val=(Dd.val+d+10)%10;Dd.ang+=d*36;drawDial()}
 function driftDial(){
   if(!G||G.over||G.solved.has('dial'))return;const Dd=G.dial;
-  if(Dd.val!==Dd.home){const fwd=(Dd.home-Dd.val+10)%10;turnDial(fwd<=5?1:-1);beep(240,.03,'square',.03)}
+  if(Dd.val!==Dd.home){const fwd=(Dd.home-Dd.val+10)%10;turnDial(fwd<=5?1:-1);SFX.ratchet(.08)}
   gl(Dd.drift,driftDial);
 }
 $('#m-dial').addEventListener('click',e=>{
   const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial'))return;
   const d=+b.dataset.d;
-  if(d){turnDial(d);beep(500+G.dial.val*30,.03,'square',.04);return}
-  if(G.dial.val===G.dial.target){beep(1000,.06);solve('dial')}else strike('dial');
+  if(d){turnDial(d);SFX.ratchet();return}
+  if(G.dial.val===G.dial.target){SFX.thunk();solve('dial')}else strike('dial');
 });
 
 /* ---------- final lock: unscrew the plate, read the code, type it in ---------- */
@@ -928,9 +1007,9 @@ function showCode(){
 function pressPin(k){
   if(!G||G.over||G.stage!=='final'||G.busy)return;
   const d=$('#vdisp'),n=G.code.length;
-  if(k==='C'){G.entry='';drawEntry();beep(300,.04);return}
-  if(k==='B'){G.entry=G.entry.slice(0,-1);drawEntry();beep(300,.04);return}
-  if(k!=='E'){if(G.entry.length<n){G.entry+=k;drawEntry();beep(700+ +k*40,.05)}return}
+  if(k==='C'){G.entry='';drawEntry();SFX.click(500);return}
+  if(k==='B'){G.entry=G.entry.slice(0,-1);drawEntry();SFX.click(500);return}
+  if(k!=='E'){if(G.entry.length<n){G.entry+=k;drawEntry();SFX.click(1200+ +k*60)}return}
   if(G.entry===G.code){
     d.textContent='SAFE';d.className='vdisp ok';$('#m-final').classList.add('done');$('#c-final').textContent=DONE;
     [784,988,1175].forEach((f,i)=>setTimeout(()=>beep(f,.15,'sine',.08),i*100));
@@ -956,7 +1035,10 @@ $('#plate').onclick=e=>{
 
 /* start: name screen for new players, otherwise the next level's briefing */
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
-preview();showOver(S.current?'brief':'name');
+preview();showOver(S.current?'brief':'name');submitScore();
+// mute button
+const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
+$('#mute').onclick=()=>{S.muted=!S.muted;save();if(master)master.gain.value=S.muted?0:1;else audioOn();drawMute();SFX.click(1400)};drawMute();
 }
 </script>
 </body>
