@@ -277,6 +277,31 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 #ranks{margin-top:-12px}
 .chip.rank{background:#1f5134;color:#d9ffe6;animation:pop .4s cubic-bezier(.2,1.7,.4,1)}
 .chip .up{color:#46ff8a;font-weight:400}
+/* slider */
+.sliders{display:flex;flex-direction:column;gap:12px;padding:4px 2px}
+.sl{display:grid;grid-template-columns:16px minmax(0,1fr) 26px;align-items:center;gap:6px}
+.slab{font:700 16px "Barlow Condensed",sans-serif;color:#c9ced3}
+.sl output{font:22px "Share Tech Mono",monospace;color:#46ff8a;text-align:center}
+.rng{-webkit-appearance:none;appearance:none;width:100%;height:40px;margin:0;background:transparent;touch-action:none;cursor:pointer}
+.rng::-webkit-slider-runnable-track{height:12px;border-radius:6px;background:repeating-linear-gradient(90deg,#1b1e21 0 calc(11.11% - 2px),#4c545c calc(11.11% - 2px) 11.11%);box-shadow:inset 0 2px 4px #000}
+.rng::-moz-range-track{height:12px;border-radius:6px;background:#1b1e21;box-shadow:inset 0 2px 4px #000}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;margin-top:-10px;border-radius:9px;background:linear-gradient(#e9e4d4,#a9a395);box-shadow:0 3px 0 #6d685c}
+.rng::-moz-range-thumb{width:32px;height:32px;border:0;border-radius:9px;background:linear-gradient(#e9e4d4,#a9a395);box-shadow:0 3px 0 #6d685c}
+.rng:disabled::-webkit-slider-thumb{background:var(--ok)}.rng:disabled::-moz-range-thumb{background:var(--ok)}
+.rng:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.clue .sep{opacity:.5;margin:0 2px}
+/* decoy */
+.decoyw{display:grid;place-items:center;padding:4px 0}
+.mod.decoy.revealed .clue{color:#ff6a5f;text-shadow:0 0 8px rgba(255,59,47,.6)}
+.mod.zap{animation:bad .4s}
+/* chain: order badges, locked modules */
+.ord{position:absolute;top:-9px;left:-9px;z-index:3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#f2c230;color:#161616;font:800 18px/1 "Barlow Condensed",sans-serif;box-shadow:0 3px 0 #a8820f}
+.ord[hidden]{display:none}
+.mod.locked{opacity:.35;filter:grayscale(.7);pointer-events:none}
+/* shuffle */
+.mod.shuf{animation:shuf .35s ease-out}@keyframes shuf{from{transform:scale(.9);opacity:.4}}
+/* daily bomb button on the map */
+.cta.dly{display:block;width:100%;margin:6px 0 14px;background:#1f5134;color:#d9ffe6;box-shadow:0 6px 0 #0f2a1b}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -301,6 +326,8 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="mod" id="m-switches"><span class="led"></span><div class="clue" id="c-switches" aria-live="polite"></div><div class="sws" id="sws"></div></div>
     <div class="mod" id="m-dial"><span class="led"></span><div class="clue" id="c-dial" aria-live="polite"></div>
       <div class="dialw"><div class="dial" id="dial"></div><div class="drow"><button class="dbtn" data-d="-1" aria-label="Turn left">◀</button><button class="dbtn lock" data-d="0">LOCK</button><button class="dbtn" data-d="1" aria-label="Turn right">▶</button></div></div></div>
+    <div class="mod" id="m-slider"><span class="led"></span><div class="clue" id="c-slider" aria-live="polite"></div><div class="sliders" id="sliders"></div></div>
+    <div class="mod decoy" id="m-decoy" hidden><span class="led"></span><div class="clue" id="c-decoy"></div><div class="decoyw"><button class="big" id="dbig" aria-label="Decoy button">PUSH</button></div></div>
   </div>
   <div class="vault mod" id="m-final" hidden><span class="led"></span><div class="clue" id="c-final" aria-live="polite"></div>
     <div class="vgrid">
@@ -333,7 +360,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="chips" id="ranks" aria-live="polite"></div>
     <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
-    <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button></div>
+    <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button><button role="tab" data-t="daily">Daily</button></div>
     <div class="lvpick" id="lvpick" hidden><button class="ib" data-d="-1" aria-label="Previous level">◀</button><span id="lvpickT">Level 1</span><button class="ib" data-d="1" aria-label="Next level">▶</button></div>
     <ol class="board" id="board" aria-label="Leaderboard" hidden></ol>
     <div class="row"><button class="cta" id="go">PLAY</button><button class="cta alt" id="alt" hidden>↻ Replay</button></div>
@@ -345,7 +372,11 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 {
 const $=s=>document.querySelector(s);
 const COL={red:'#e8382e',blue:'#2f6fe0',yellow:'#f2c230',white:'#eeeeee',black:'#141414',green:'#2fb85a'};
-const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+// all puzzle randomness goes through RNG, so the Daily bomb can use a seeded one and be the same for everyone
+let RNG=Math.random;
+const rnd=n=>Math.floor(RNG()*n), pick=a=>a[rnd(a.length)];
+const mulberry=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const seedOf=str=>{let h=2166136261;for(const c of str)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 const cap=s=>s[0].toUpperCase()+s.slice(1);
 
@@ -392,10 +423,11 @@ let PENALTY=10000;
 // wires {n:[min,max], clues, cuts} · button {kinds, zone %, speed s, slide s} · keys {n, len, memo ms, rev chance}
 // pulse {taps, rev chance} · switches {n, opp chance, memo ms} · dial {drift ms}
 // level extras: final {len, memo} · hide (ms before every instruction screen goes blank) · sd (sudden death) · boss
-const ORDER=['wires','button','keys','pulse','switches','dial'];
+// slider {n sliders, move ms} · level extras also: decoy {late ms} · chain {blind ms} · shuffle 'mods'|'all'
+const ORDER=['wires','button','keys','pulse','switches','dial','slider'];
 const W=(n,clues,cuts=1)=>({n,clues,cuts}), B=(kinds,zone=30,speed=2,slide=0)=>({kinds,zone,speed,slide}),
   K=(n,len,memo=0,rev=0)=>({n,len,memo,rev}), P=(taps,rev=0)=>({taps,rev}),
-  SW=(n,opp=0,memo=0)=>({n,opp,memo}), D=(drift=0)=>({drift});
+  SW=(n,opp=0,memo=0)=>({n,opp,memo}), D=(drift=0)=>({drift}), SL=(n=1,move=0)=>({n,move});
 const WALL=['color','num','ord','odd'], W2=[...WALL,'all'], BALL=['tap','taps','hold'];
 const LV=(t,time,pen,mods,intro,final,x={})=>({t,time,pen,mods,intro,final,...x});
 const LEVELS=[
@@ -501,7 +533,86 @@ const LEVELS=[
       {len:n>=91?6:4,memo:n>=86?2000-(i-5)*40:0},{boss,sd,hide}));
   });
 }
-const WORLDS=[[1,'Training'],[28,'Twists'],[41,'Switches'],[51,'Dial'],[61,'Memory'],[71,'Sudden death'],[81,'Gauntlet']];
+// ── Worlds 8–11 (101–150): Slider, Decoys, Chain, Shuffle
+{
+  const W3=[...W2,'not'],WSH=['color','num','all','not'];   // shuffled wires: no "2ND RED", since positions move
+  const w2=W([5,7],W3,2),w3=W([6,7],W3,3),wsh=W([5,7],WSH,3),bt=B(BALL,18,1.4,1.8),bt2=B(BALL,14,1.2,1.5),
+        ky=K(6,5,0,.5),ky2=K(6,5,1600,.5),pu=P(6,.5),sw=SW(5,.5),dl=D(1000),dl2=D(750),sl=SL(2,1200),sl2=SL(2,900);
+  const X=(...a)=>LEVELS.push(LV(...a));
+  // World 8 · Slider
+  X('Slide',45,5,{slider:SL(1)},'New: the Slider. Drag to the number, let go.');
+  X('Fine tune',35,5,{slider:SL(1)},'Quicker.');
+  X('Twin rails',45,5,{slider:SL(2)},'Two sliders: A and B.');
+  X('Moving mark',45,8,{slider:SL(1,1400)},'The number moves. Let go on it.');
+  X('Chase',50,8,{slider:SL(2,1200)},'Two moving numbers.');
+  X('Slide and cut',70,8,{wires:w2,slider:SL(2)},'Slider + Wires.');
+  X('Slide and dial',70,10,{dial:dl,slider:SL(1,1200)},'Slider + Dial.');
+  X('Slide and flip',75,10,{switches:sw,slider:sl},'Slider + Switches.');
+  X('Rail yard',120,10,{wires:w2,keys:ky,pulse:pu,slider:sl},'Four modules.',{len:4});
+  X('Railgun',110,12,{button:bt,switches:sw,dial:dl,slider:sl2},'Boss level.',{len:6},{boss:1});
+  X('Slide blind',80,10,{wires:w2,slider:SL(2)},'Instructions vanish.',undefined,{hide:2500});
+  X('Slide or die',90,0,{keys:ky,slider:sl},'One mistake and it blows.',undefined,{sd:1});
+  // World 9 · Decoys
+  X('Decoy',60,5,{wires:W([5,7],W2,1)},'One module is a fake. Don’t touch it!',undefined,{decoy:{}});
+  X('Look twice',55,5,{button:B(BALL,20,1.5)},'Two buttons. One is a trap.',undefined,{decoy:{}});
+  X('Don’t cut',50,5,{wires:W([5,7],['not'])},'DON’T CUT means cut any other wire.');
+  X('Mixed signals',70,8,{wires:w2},'Mixed cuts, plus a fake.',undefined,{decoy:{}});
+  X('Late reveal',75,8,{keys:ky,slider:SL(1)},'The fake hides for a second. Wait for it.',undefined,{decoy:{late:1200}});
+  X('Bait',75,10,{button:bt,switches:sw},'Don’t take the bait.',undefined,{decoy:{late:1200}});
+  X('Trap door',100,10,{wires:w2,pulse:pu,dial:dl},'Three modules and a fake.',undefined,{decoy:{late:1000}});
+  X('Minefield',110,12,{wires:w3,button:bt,keys:ky},'Boss level.',{len:6},{decoy:{late:1000},boss:1});
+  X('Bluff',100,12,{keys:ky,switches:sw,slider:sl},'Call the bluff.',{len:4},{decoy:{late:900}});
+  X('Smoke screen',100,12,{wires:w2,pulse:pu,dial:dl},'Vanishing, with a fake.',undefined,{decoy:{late:900},hide:2200});
+  X('Cold feet',90,0,{button:bt,slider:sl},'One mistake and it blows.',undefined,{decoy:{late:900},sd:1});
+  X('Double bluff',105,12,{wires:w3,keys:ky,switches:sw},'Six-digit code.',{len:6},{decoy:{late:800}});
+  X('Poker face',105,15,{button:bt,dial:dl,slider:sl},'Everything vanishes.',{len:4,memo:2000},{decoy:{late:800},hide:2000});
+  // World 10 · Chain
+  X('Chain',70,5,{wires:w2,button:bt},'New: solve in order. 1, then 2.',undefined,{chain:{}});
+  X('Chain of three',90,8,{wires:w2,keys:ky,switches:sw},'Follow the numbers.',undefined,{chain:{}});
+  X('Links',90,8,{pulse:pu,dial:dl,slider:sl},'Follow the numbers.',undefined,{chain:{}});
+  X('Four links',120,10,{wires:w2,button:bt,keys:ky,pulse:pu},'Four in order.',{len:4},{chain:{}});
+  X('Iron chain',110,12,{keys:ky,switches:sw,dial:dl,slider:sl},'Boss level.',{len:6},{chain:{},boss:1});
+  X('Blind chain',95,10,{wires:w2,button:bt,keys:ky},'The order hides. Remember it.',undefined,{chain:{blind:2500}});
+  X('Out of order',95,10,{switches:sw,dial:dl,slider:sl},'Wrong module = mistake.',undefined,{chain:{blind:2200}});
+  X('Fetters',120,12,{wires:w2,button:bt,keys:ky,pulse:pu},'Four, hidden order.',{len:4},{chain:{blind:2000}});
+  X('Chained bait',105,12,{wires:w2,button:bt,keys:ky},'In order, with a fake.',undefined,{chain:{},decoy:{late:900}});
+  X('Shackles',120,12,{wires:w2,keys:ky,switches:sw,dial:dl},'Everything vanishes.',{len:4,memo:2000},{chain:{blind:1800},hide:2000});
+  X('Broken link',110,0,{wires:w2,switches:sw,dial:dl},'One mistake and it blows.',undefined,{chain:{},sd:1});
+  X('Chain master',115,15,{button:bt2,keys:ky,pulse:pu,slider:sl},'Hidden order, six digits.',{len:6},{chain:{blind:1600}});
+  // World 11 · Shuffle
+  X('Shuffle',90,8,{wires:w2,button:bt,keys:ky},'New: modules swap places as you solve them.',undefined,{shuffle:'mods'});
+  X('Shell game',120,10,{pulse:pu,switches:sw,dial:dl,slider:sl},'Keep track.',{len:4},{shuffle:'mods'});
+  X('Card shark',110,12,{wires:w3,button:bt,keys:ky,slider:sl},'Boss level.',{len:6},{shuffle:'mods',boss:1});
+  X('Scramble',50,8,{keys:K(6,5)},'Keys swap after every press.',undefined,{shuffle:'all'});
+  X('Jumble',80,10,{wires:wsh,keys:ky},'Wires move too.',undefined,{shuffle:'all'});
+  X('Mix-up',120,10,{wires:wsh,button:bt,keys:ky,slider:sl},'Everything moves.',{len:4},{shuffle:'all'});
+  X('Whirlwind',110,12,{wires:wsh,keys:ky,dial:dl},'Shuffle, with a fake.',undefined,{shuffle:'all',decoy:{late:900}});
+  X('Tornado',125,12,{wires:wsh,keys:ky,switches:sw,pulse:pu},'Shuffle, in order.',{len:4},{shuffle:'all',chain:{}});
+  X('Hurricane',120,12,{wires:wsh,keys:ky,dial:dl,slider:sl},'Shuffle, vanishing.',{len:4,memo:2000},{shuffle:'all',hide:2000});
+  X('Eye of the storm',110,0,{button:bt,switches:sw,slider:sl},'One mistake and it blows.',undefined,{shuffle:'mods',sd:1});
+  X('Chaos',120,15,{wires:wsh,keys:ky2,slider:sl2},'Hidden order, a fake, everything moves.',{len:6},{shuffle:'all',chain:{blind:1800},decoy:{late:800}});
+  X('Endgame',110,15,{wires:wsh,dial:dl2,slider:sl2},'Nearly there.',{len:6,memo:1800},{shuffle:'all',chain:{blind:1800},decoy:{late:800},hide:1800});
+  X('Grandmaster',120,20,{wires:wsh,keys:ky2,dial:dl2,slider:sl2},'The last bomb. Everything at once.',{len:6,memo:1800},{shuffle:'all',chain:{blind:1600},hide:1800,boss:1});
+}
+const WORLDS=[[1,'Training'],[28,'Twists'],[41,'Switches'],[51,'Dial'],[61,'Memory'],[71,'Sudden death'],[81,'Gauntlet'],
+  [101,'Slider'],[113,'Decoys'],[126,'Chain'],[138,'Shuffle']];
+
+/* ---------- Daily bomb: one device per day, the same for everyone ---------- */
+const todayKey=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const prettyDay=k=>new Date(k+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+function buildDaily(day){
+  const keep=RNG;RNG=mulberry(seedOf('daily:'+day));
+  try{
+    const CFG={wires:W([5,7],[...W2,'not'],2),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(6,.5),switches:SW(5,.5),dial:D(1000),slider:SL(2,1300)};
+    const twist=pick(['none','none','hide','chain','shuffle','decoy']),kinds=shuffle(ORDER).slice(0,twist==='decoy'?3:4),mods={},x={daily:day};
+    ORDER.forEach(k=>{if(kinds.includes(k))mods[k]=CFG[k]});
+    if(twist==='hide')x.hide=2500;if(twist==='chain')x.chain={};if(twist==='shuffle')x.shuffle='mods';if(twist==='decoy')x.decoy={late:1000};
+    const intro={none:'Today’s bomb. Same for everyone.',hide:'Today: instructions vanish.',chain:'Today: solve in order.',shuffle:'Today: modules swap places.',decoy:'Today: one module is a fake.'}[twist];
+    return LV('Daily bomb',120,10,mods,intro,{len:4},x);
+  }finally{RNG=keep}
+}
+let daily=false,DAILY=null;
+const curL=()=>daily?DAILY:LEVELS[lvl];
 
 /* ---------- player & progress (saved in this browser) ---------- */
 const STORE='defusal';
@@ -531,40 +642,51 @@ function wireClue(w,cut,type){
     return{html:`CUT ${k===p.length-1?'LAST':ORD[k]} ${cp(c)}`,ans:[p[k]]}}
   if(type==='odd'){if(cut.size||w.length<3||cols.length!==2)return null;const c=cols.find(c=>idx(c).length===1);return c?{html:'CUT THE ODD ONE',ans:idx(c)}:null}
   if(type==='all'){const cs=cols.filter(c=>idx(c).length>=2&&idx(c).every(live));if(!cs.length)return null;const c=pick(cs);return{html:`CUT ALL ${cp(c)}`,ans:idx(c)}}
+  // DON'T CUT RED: any one live wire of another colour will do
+  if(type==='not'){const cs=cols.filter(c=>idx(c).length>=2&&w.some((x,i)=>x!==c&&live(i)));if(!cs.length)return null;const c=pick(cs);
+    return{html:`DON’T CUT ${cp(c)} <small>cut another</small>`,ans:w.map((x,i)=>x!==c&&live(i)?i:-1).filter(i=>i>=0),any:true}}
 }
 function makeWires(cfg){
   const cols=Object.keys(COL);
   for(;;){
     const n=cfg.n[0]+rnd(cfg.n[1]-cfg.n[0]+1);let w;
-    if(cfg.clues.includes('odd')&&(cfg.clues.length===1||Math.random()<.2)){const a=pick(cols),b=pick(cols.filter(x=>x!==a));w=Array(n).fill(a);w[rnd(n)]=b}
+    if(cfg.clues.includes('odd')&&(cfg.clues.length===1||RNG()<.2)){const a=pick(cols),b=pick(cols.filter(x=>x!==a));w=Array(n).fill(a);w[rnd(n)]=b}
     else w=Array.from({length:n},()=>pick(cols));
     const cut=new Set(),steps=[];
-    for(let k=0;k<cfg.cuts;k++){const s=shuffle(cfg.clues).map(t=>wireClue(w,cut,t)).find(Boolean);if(!s)break;steps.push(s);s.ans.forEach(i=>cut.add(i))}
+    for(let k=0;k<cfg.cuts;k++){const s=shuffle(cfg.clues.filter(t=>t!=='not'||k===cfg.cuts-1)).map(t=>wireClue(w,cut,t)).find(Boolean);if(!s)break;steps.push(s);s.ans.forEach(i=>cut.add(i))}
     if(steps.length===cfg.cuts&&cut.size<n)return{wires:w,cut:new Set(),steps,step:0};
   }
 }
 function makeButton(cfg){
   const kind=pick(cfg.kinds),n=kind==='taps'?3+rnd(3):1,z0=15+rnd(Math.max(1,80-cfg.zone));
-  return{kind,n,left:n,zone:[z0,z0+cfg.zone],cur:[z0,z0+cfg.zone],size:cfg.zone,speed:cfg.speed,slide:kind==='hold'?cfg.slide:0,ph:Math.random()*6.28,
+  return{kind,n,left:n,zone:[z0,z0+cfg.zone],cur:[z0,z0+cfg.zone],size:cfg.zone,speed:cfg.speed,slide:kind==='hold'?cfg.slide:0,ph:RNG()*6.28,
     color:pick(['red','blue','yellow','white']),downAt:0,fill:0};
 }
-function makeKeys(cfg){const shown=shuffle(SYMS).slice(0,cfg.n);return{shown,seq:shuffle(shown).slice(0,cfg.len),hits:0,memo:cfg.memo,rev:Math.random()<cfg.rev}}
+function makeKeys(cfg){const shown=shuffle(SYMS).slice(0,cfg.n);return{shown,seq:shuffle(shown).slice(0,cfg.len),hits:0,memo:cfg.memo,rev:RNG()<cfg.rev}}
 function makeSwitches(cfg){
-  const n=cfg.n,show=Array.from({length:n},()=>Math.random()<.5),opp=Math.random()<cfg.opp,target=show.map(u=>opp?!u:u);let state;
-  do{state=Array.from({length:n},()=>Math.random()<.5)}while(state.filter((s,i)=>s!==target[i]).length<Math.min(2,n));
+  const n=cfg.n,show=Array.from({length:n},()=>RNG()<.5),opp=RNG()<cfg.opp,target=show.map(u=>opp?!u:u);let state;
+  do{state=Array.from({length:n},()=>RNG()<.5)}while(state.filter((s,i)=>s!==target[i]).length<Math.min(2,n));
   return{n,show,opp,target,state,memo:cfg.memo};
 }
 function makeDial(cfg){const target=rnd(10);let val;do{val=rnd(10)}while(Math.min((val-target+10)%10,(target-val+10)%10)<3);return{target,val,home:val,ang:val*36,drift:cfg.drift}}
+// slider: drag each one to its number and let go; on moving levels the number creeps while you work
+function makeSlider(cfg){return{move:cfg.move,items:Array.from({length:cfg.n},()=>{const target=rnd(10);let val;do{val=rnd(10)}while(Math.abs(val-target)<3);return{target,val,done:false,at:0}})}}
 
 function newGame(){
-  const L=LEVELS[lvl],M=L.mods;PENALTY=L.pen*1000;
+  const L=curL(),M=L.mods;PENALTY=L.pen*1000;
   GT.forEach(clearTimeout);GT=[];
-  const pc=M.pulse||P(5);
-  G={lvl:L,active:ORDER.filter(k=>M[k]),left:L.time*1000,strikes:0,over:false,solved:new Set(),hid:{},
-    w:makeWires(M.wires||W([3,6],WALL)),btn:makeButton(M.button||B(BALL)),keys:makeKeys(M.keys||K(4,4)),
-    pulse:{n:pc.taps,hits:0,lit:pick(PC),rev:Math.random()<pc.rev},
-    sw:makeSwitches(M.switches||SW(4)),dial:makeDial(M.dial||D())};
-  G.code=Array.from({length:(L.final&&L.final.len)||4},()=>rnd(10)).join('');
+  if(L.daily)RNG=mulberry(seedOf('device:'+L.daily));   // the same device for everyone today
+  try{
+    // the pulse order is fixed up front (never the same pad twice in a row)
+    const pc=M.pulse||P(5),seq=[];for(let i=0;i<pc.taps;i++){let c;do{c=pick(PC)}while(c===seq[i-1]);seq.push(c)}
+    G={lvl:L,active:ORDER.filter(k=>M[k]),left:L.time*1000,strikes:0,over:false,solved:new Set(),hid:{},
+      w:makeWires(M.wires||W([3,6],WALL)),btn:makeButton(M.button||B(BALL)),keys:makeKeys(M.keys||K(4,4)),
+      pulse:{n:pc.taps,hits:0,seq,lit:seq[0],rev:RNG()<pc.rev},
+      sw:makeSwitches(M.switches||SW(4)),dial:makeDial(M.dial||D()),sl:makeSlider(M.slider||SL()),
+      decoy:L.decoy?{late:L.decoy.late||0,revealed:!L.decoy.late,fake:pick(['TAP','TAP ×3','HOLD · LET GO IN GREEN']),color:pick(['red','blue','yellow','white'])}:null};
+    G.chain=L.chain?shuffle(G.active):null;G.ci=0;G.chainHid=false;
+    G.code=Array.from({length:(L.final&&L.final.len)||4},()=>rnd(10)).join('');
+  }finally{RNG=Math.random}
   G.stage='modules';G.entry='';G.busy=false;G.screws=0;
   render();
 }
@@ -582,18 +704,21 @@ function render(){
   $('#sws').innerHTML=G.sw.state.map((u,i)=>`<button class="sw2${u?' up':''}" data-i="${i}" aria-label="Switch ${i+1}, ${u?'up':'down'}"><span class="knob"></span></button>`).join('');
   $('#dial').innerHTML=Array.from({length:10},(_,d)=>{const a=(d*36-90)*Math.PI/180;return`<span class="dn" style="left:${50+40*Math.cos(a)}%;top:${50+40*Math.sin(a)}%">${d}</span>`}).join('')+'<span class="needle" id="needle"></span><span class="hub"></span>';
   drawDial();
-  document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done'));
+  $('#sliders').innerHTML=G.sl.items.map((s,i)=>`<label class="sl"><span class="slab">${G.sl.items.length>1?'AB'[i]:''}</span><input class="rng" type="range" min="0" max="9" step="1" value="${s.val}" data-i="${i}" aria-label="Slider ${'AB'[i]}"><output>${s.val}</output></label>`).join('');
+  const db=$('#dbig');if(G.decoy){db.style.background=COL[G.decoy.color];db.style.color=G.decoy.color==='white'||G.decoy.color==='yellow'?'#161616':'#fff'}
+  document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done','locked','zap','shuf'));
   const mods=$('.mods');mods.hidden=false;mods.classList.remove('lift');$('#m-final').hidden=true;
-  ORDER.forEach(id=>$('#m-'+id).hidden=!G.active.includes(id));mods.classList.toggle('one',G.active.length===1);
+  ORDER.forEach(id=>{const m=$('#m-'+id);m.hidden=!G.active.includes(id);m.style.order=''});
+  $('#m-decoy').hidden=!G.decoy;$('#m-decoy').style.order='';mods.classList.toggle('one',G.active.length+(G.decoy?1:0)===1);
   // a module (or the lock) that's new on this level gets a glowing screen
-  const prev=LEVELS[lvl-1];
+  const prev=G.lvl.daily?G.lvl:LEVELS[lvl-1];
   ORDER.forEach(id=>$('#c-'+id).classList.toggle('hint',G.active.includes(id)&&(!prev||!prev.mods[id])));
   $('#c-final').classList.toggle('hint',!!G.lvl.final&&!(prev&&prev.final));
   $('#clock').classList.remove('safe');
   $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
   const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');cs.classList.toggle('long',G.code.length>4);$('#c-final').textContent='UNSCREW THE PLATE';drawEntry();
-  $('#hudLvl').textContent=`Level ${lvl+1}`;
-  ORDER.forEach(id=>CLUE[id]());drawStrikes();drawClock();
+  $('#hudLvl').textContent=G.lvl.daily?'Daily bomb':`Level ${lvl+1}`;
+  ORDER.forEach(id=>CLUE[id]());drawDecoy();drawChain();drawStrikes();drawClock();
 }
 const CLUE={
   wires(){const Wd=G.w,s=Wd.steps[Wd.step];$('#c-wires').innerHTML=G.solved.has('wires')?DONE:(Wd.steps.length>1?`<small>${Wd.step+1}/${Wd.steps.length}</small>`:'')+(G.hid.wires?QQ:s.html)},
@@ -602,7 +727,17 @@ const CLUE={
     $('#c-keys').innerHTML=G.solved.has('keys')?DONE:(Kd.rev?'<b class="rev">◀</b>':'')+Kd.seq.map((s,i)=>`<span class="sq${ok(i)?' ok':''}">${ok(i)||!G.hid.keys?s:'?'}</span>`).join('')},
   pulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.rev?'TAP OPPOSITE <b class="rev">◀</b>':'TAP THE LIT PAD'} <small>${Pd.hits}/${Pd.n}</small>`},
   switches(){const Sd=G.sw;$('#c-switches').innerHTML=G.solved.has('switches')?DONE:(Sd.opp?'<b class="opp">OPPOSITE</b>':'')+(G.hid.switches?QQ:`<span class="arrows">${Sd.show.map(u=>u?'▲':'▼').join('')}</span>`)},
-  dial(){$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`TURN TO <b class="big2">${G.hid.dial?'?':G.dial.target}</b> · LOCK`}};
+  dial(){$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`TURN TO <b class="big2">${G.hid.dial?'?':G.dial.target}</b> · LOCK`},
+  slider(){const Sl=G.sl,two=Sl.items.length>1;$('#c-slider').innerHTML=G.solved.has('slider')?DONE:Sl.items.map((s,i)=>`${two?'AB'[i]+' →':'SLIDE TO'} <b class="big2">${s.done?'✓':G.hid.slider?'?':s.target}</b>`).join('<span class="sep">·</span>')}};
+// decoy: pretends to be a real module, then shows DECOY · DON'T TOUCH
+function drawDecoy(){const d=G.decoy;if(!d)return;$('#m-decoy').classList.toggle('revealed',d.revealed);$('#c-decoy').textContent=d.revealed?'DECOY · DON’T TOUCH':d.fake}
+// chain: numbered badges; plain chains dim everything but the next module, blind chains hide the numbers
+function drawChain(){
+  ORDER.forEach(id=>{const m=$('#m-'+id),b=m.querySelector('.ord'),k=G.chain?G.chain.indexOf(id):-1,done=G.solved.has(id);
+    b.hidden=k<0||done;b.textContent=G.chainHid?'?':k+1;
+    m.classList.toggle('locked',!!G.chain&&!G.lvl.chain.blind&&k>G.ci&&!done)});
+}
+ORDER.forEach(id=>$('#m-'+id).insertAdjacentHTML('afterbegin','<span class="ord" hidden></span>'));
 function drawZone(){const z=G.btn.cur;$('#zone').style.bottom=z[0]+'%';$('#zone').style.height=(z[1]-z[0])+'%'}
 function drawDial(){const n=$('#needle');if(n)n.style.transform=`rotate(${G.dial.ang}deg)`;$('#dial').setAttribute('aria-label','Dial at '+G.dial.val)}
 // legacy names used elsewhere
@@ -626,6 +761,8 @@ function strike(from){
 }
 function solve(id){
   if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');CLUE[id]();beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
+  if(G.chain){G.ci++;drawChain()}
+  if(G.lvl.shuffle&&G.solved.size<G.active.length)shuffleMods();
   if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,300);else defused()}
 }
 // memory: show a module's instruction, then blank it after the level's hide time (or the module's own memo time)
@@ -642,6 +779,7 @@ function defused(){
 }
 function end(win,why){
   G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);
+  if(win&&G.lvl.daily){dailyWin();return}
   if(win){
     const left=Math.ceil(G.left/1000),ms=Math.max(1000,Math.round(G.lvl.time*1000-G.left)),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
     const betterStars=!!b&&(stars>b.s||(stars===b.s&&left>b.t)),pb=!b||!b.ms||ms<b.ms,nb=b?{...b}:{s:stars,t:left};
@@ -692,6 +830,28 @@ function submitTimes(){
   return Promise.all(Object.entries(pend).map(([i,ms])=>lbCall('submit_time',{p_id:pid(),p_name:S.current,p_level:+i+1,p_ms:ms})
     .then(()=>{if(P.pend&&P.pend[i]===ms){delete P.pend[i];save()}}).catch(()=>{})));
 }
+// Daily bomb win: keep today's best time, send it, then show today's rank
+function dailyWin(){
+  const ms=Math.max(1000,Math.round(G.lvl.time*1000-G.left)),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),day=G.lvl.daily,
+        best=P.daily&&P.daily.day===day?P.daily.ms:0,pb=!best||ms<best;
+  if(pb){P.daily={day,ms};P.dpend={day,ms};save()}
+  const res=G.result={stars,ms,beat:pb&&!!best};
+  showOver('win');celebrate();
+  [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120));
+  if(lbOn())submitDaily().then(()=>lbCall('my_daily',{p_id:pid(),p_day:day})).then(m=>{
+    if(mode!=='win'||G.result!==res)return;const me=m&&m[0],add=x=>$('#ranks').insertAdjacentHTML('beforeend',x);if(!me)return;
+    if(pb&&me.pos===1){add(chip('🏆 TODAY’S RECORD!','hot'));[1046,1318,1568,2093].forEach((f,k)=>setTimeout(()=>beep(f,.14,'triangle',.07),k*90))}
+    else add(chip(`📅 #${me.pos} today`,'rank'));
+  }).catch(()=>{});
+}
+// today's best waits in P.dpend until the server has it; a time from an earlier day is dropped if refused
+function submitDaily(){
+  if(!lbOn()||!S.current)return Promise.resolve();const P=prof(),d=P.dpend;if(!d)return Promise.resolve();
+  const same=()=>P.dpend&&P.dpend.day===d.day&&P.dpend.ms===d.ms;
+  return lbCall('submit_daily',{p_id:pid(),p_name:S.current,p_day:d.day,p_ms:d.ms})
+    .then(()=>{if(same()){delete P.dpend;save()}})
+    .catch(()=>{if(d.day!==todayKey()&&same()){delete P.dpend;save()}});
+}
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>ESC[c]);
 const MEDAL=['🥇','🥈','🥉'];
@@ -710,6 +870,14 @@ async function drawBoard(quiet){
       if(me&&me>(top||[]).length){const t=totals(prof());html+=gap+row(me,S.current,t.levels,t.stars,t.ms,true)}
       b.innerHTML=html||'<li class="msg">No scores yet. Clear a level to be first!</li>';
       $('#oTop').innerHTML=kick(me?`You’re #${me} overall`:'🏆 Top 50');
+    }else if(tab==='daily'){
+      const day=todayKey(),[top,mine]=await Promise.all([lbCall('top_daily',{p_day:day,n:10}),S.current?lbCall('my_daily',{p_id:pid(),p_day:day}):[]]);if(stale())return;
+      const me=mine&&mine[0];
+      const row=(pos,name,ms,isMe)=>`<li class="fast${isMe?' me':''}"><b>${MEDAL[pos-1]||pos}</b><span class="nm">${esc(name)}</span><span class="tm">${fmtMs(ms)}</span></li>`;
+      let html=(top||[]).map(r=>row(r.pos,r.name,r.ms,!!me&&r.pos===me.pos)).join('');
+      if(me&&me.pos>(top||[]).length)html+=gap+row(me.pos,S.current,me.ms,true);
+      b.innerHTML=html||'<li class="msg">No times today yet. Be the first!</li>';
+      $('#oTop').innerHTML=kick(me?`You’re #${me.pos} today`:`📅 ${prettyDay(day)}`);
     }else{
       const L=boardLvl+1,[top,mine]=await Promise.all([lbCall('top_times',{p_level:L,n:10}),S.current?lbCall('my_time',{p_id:pid(),p_level:L}):[]]);if(stale())return;
       const me=mine&&mine[0];
@@ -725,7 +893,10 @@ $('#btabs').onclick=e=>{const t=e.target.closest('button');if(!t||t.dataset.t===
 $('#lvpick').onclick=e=>{const d=e.target.closest('button');if(!d)return;const n=Math.min(LEVELS.length-1,Math.max(0,boardLvl+ +d.dataset.d));if(n===boardLvl)return;SFX.ratchet();boardLvl=n;drawBoard()};
 // briefing: your best time and the level record, filled in once known
 function drawRecord(){
-  const i=lvl,b=prof().best[i],add=h=>{if(mode==='brief'&&lvl===i)$('#chips').insertAdjacentHTML('beforeend',h)};
+  const i=lvl,isD=daily,add=h=>{if(mode==='brief'&&lvl===i&&daily===isD)$('#chips').insertAdjacentHTML('beforeend',h)};
+  if(isD){const day=DAILY.daily,P=prof();if(P.daily&&P.daily.day===day)add(chip('Best '+fmtMs(P.daily.ms)));
+    if(lbOn())lbCall('top_daily',{p_day:day,n:1}).then(t=>{if(t&&t[0])add(chip(`🏆 ${fmtMs(t[0].ms)} · ${esc(t[0].name)}`,'rec'))}).catch(()=>{});return}
+  const b=prof().best[i];
   if(b&&b.ms)add(chip('Best '+fmtMs(b.ms)));
   if(lbOn())lbCall('top_times',{p_level:i+1,n:1}).then(t=>{if(t&&t[0])add(chip(`🏆 ${fmtMs(t[0].ms)} · ${esc(t[0].name)}`,'rec'))}).catch(()=>{});
 }
@@ -748,18 +919,20 @@ function drawLvls(){
 }
 // screens: name · map · brief · win · lose
 function showOver(m,why){
-  mode=m;const L=LEVELS[lvl],n=lvl+1,o=$('#over'),last=lvl===LEVELS.length-1;
+  if(m==='map')daily=false;
+  mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
-    top=kick(`★ ${tot} / ${LEVELS.length*3}`);title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
-  if(m==='brief'){top=kick(`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
-    chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'');go='PLAY'}
-  if(m==='win'){const r=G.result;top=kick(last?'Master technician':`Level ${n} cleared`)+starHTML(r.stars);
+    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+'<button class="cta dly" id="dly">📅 Daily bomb</button>';title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
+  if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
+    chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'')
+      +(L.chain?chip('🔗 IN ORDER'):'')+(L.shuffle?chip('🔀 SHUFFLE'):'')+(L.decoy?chip('🎭 DECOY'):'');go='PLAY'}
+  if(m==='win'){const r=G.result;top=kick(daily?'Daily bomb defused':last?'Grandmaster':`Level ${n} cleared`)+starHTML(r.stars);
     title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
-    text=last?'All 100 levels defused.':'';
-    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
-  if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY'}
+    text=last?`All ${LEVELS.length} levels defused.`:'';
+    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=daily?'TODAY’S BOARD':last?'ALL LEVELS':'NEXT ▶'}
+  if(m==='lose'){top=kick(daily?'Daily bomb':`Level ${n}`);title='BOOM';text=why;go='RETRY'}
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
@@ -772,7 +945,9 @@ function showOver(m,why){
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
 }
 function preview(){resetFX();newGame();G.over=true}
-const toBrief=i=>{lvl=i;preview();showOver('brief')};
+const toBrief=i=>{daily=false;lvl=i;preview();showOver('brief')};
+function openDaily(){daily=true;DAILY=buildDaily(todayKey());preview();showOver('brief')}
+$('#oTop').onclick=e=>{if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}};
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
   if(mode==='name'){
@@ -781,6 +956,7 @@ $('#go').onclick=()=>{
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='board'){goBack();return}
+  if(mode==='win'&&daily){boardFrom='map';boardTab='daily';showOver('board');return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
@@ -799,8 +975,9 @@ function drawTop(){
   $('#trophy').hidden=playing()||!lbOn()||mode==='board';
 }
 function goBack(){
-  if(playing()){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}toBrief(lvl);return}
-  if(mode==='board'&&boardFrom==='brief'){toBrief(lvl);return}
+  const reBrief=()=>daily?openDaily():toBrief(lvl);
+  if(playing()){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}reBrief();return}
+  if(mode==='board'&&boardFrom==='brief'){reBrief();return}
   showOver('map');
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
@@ -992,16 +1169,20 @@ function start(){
   const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
   if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
+  if(G.active.includes('slider')&&G.sl.move)gl(G.sl.move,moveSlider);
+  if(G.decoy&&!G.decoy.revealed)gl(G.decoy.late,()=>{if(G.over)return;G.decoy.revealed=true;drawDecoy();beep(260,.1,'square',.05)});
+  if(G.chain)peekChain();
 }
 
 /* ---------- wires: cut what the screen says ---------- */
 const spark=el=>{el.classList.remove('spark');void el.offsetWidth;el.classList.add('spark');try{ac&&noiseBurst(ac.currentTime,.25,9000,2000,.35,1)}catch(e){}};
 $('#wires').onclick=e=>{
-  const w=e.target.closest('.wire');if(!w||G.over||G.solved.has('wires'))return;
+  const w=e.target.closest('.wire');if(!w||G.over||G.solved.has('wires')||!allowed('wires'))return;
   const i=+w.dataset.i,Wd=G.w,st=Wd.steps[Wd.step];if(Wd.cut.has(i))return;
   if(st.ans.includes(i)){
     Wd.cut.add(i);w.classList.add('cut');SFX.snip();
-    if(!st.ans.every(j=>Wd.cut.has(j)))return;           // "CUT ALL …" still has wires left
+    if(G.lvl.shuffle==='all')shuffleEls('#wires .wire');
+    if(!st.any&&!st.ans.every(j=>Wd.cut.has(j)))return;   // "CUT ALL …" still has wires left
     Wd.step++;
     if(Wd.step===Wd.steps.length)solve('wires');else{SFX.step();CLUE.wires();peek('wires')}
   }else{spark(w);strike('wires')}
@@ -1010,7 +1191,7 @@ $('#wires').onclick=e=>{
 /* ---------- button: tap, tap ×N, or hold and let go in the green (which may slide) ---------- */
 const big=$('#big');let meterRaf=0;
 function down(){
-  if(!G||G.over||G.solved.has('button')||G.btn.downAt)return;
+  if(!G||G.over||G.solved.has('button')||G.btn.downAt||!allowed('button'))return;
   const Bt=G.btn;Bt.downAt=performance.now();big.classList.add('down');SFX.thunk();
   if(Bt.kind==='hold'){holdHum(true);let inZ=false;const t0=Bt.downAt;(function m(){const s=(performance.now()-t0)/1000,t=s/Bt.speed;Bt.fill=(1-Math.abs(1-t%2))*100;$('#fill').style.height=Bt.fill+'%';
     if(Bt.slide){const lo=10,hi=90-Bt.size,mid=(lo+hi)/2,amp=(hi-lo)/2,z=mid+amp*Math.sin(Bt.ph+s*6.283/Bt.slide);Bt.cur=[z,z+Bt.size];drawZone()}
@@ -1033,9 +1214,9 @@ big.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* ---------- keypad: press the symbols in the order shown (◀ = reverse) ---------- */
 $('#keys').onclick=e=>{
-  const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit'))return;
+  const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit')||!allowed('keys'))return;
   const Kd=G.keys,want=Kd.rev?Kd.seq[Kd.seq.length-1-Kd.hits]:Kd.seq[Kd.hits];
-  if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;SFX.key(Kd.hits);if(Kd.hits===Kd.seq.length)solve('keys');else CLUE.keys()}
+  if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;SFX.key(Kd.hits);if(Kd.hits===Kd.seq.length)solve('keys');else{CLUE.keys();if(G.lvl.shuffle==='all')shuffleEls('#keys .key')}}
   else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike('keys')}
 };
 
@@ -1045,18 +1226,18 @@ const OPP={red:'yellow',yellow:'red',blue:'green',green:'blue'};
 function lightPad(c){document.querySelectorAll('.pad').forEach(p=>{const on=p.dataset.c===c;p.classList.toggle('lit',on);if(on){p.classList.remove('pop');void p.offsetWidth;p.classList.add('pop')}})}
 const TONE={red:330,blue:440,green:550,yellow:660};
 $('#pads').onclick=e=>{
-  const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse'))return;
+  const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse')||!allowed('pulse'))return;
   const want=Pd.rev?OPP[Pd.lit]:Pd.lit;
   if(p.dataset.c===want){
     Pd.hits++;SFX.blip(TONE[p.dataset.c]+Pd.hits*20);
     if(Pd.hits>=Pd.n){lightPad(null);solve('pulse');return}
-    Pd.lit=pick(PC.filter(c=>c!==Pd.lit));lightPad(Pd.lit);CLUE.pulse();
+    Pd.lit=Pd.seq[Pd.hits];lightPad(Pd.lit);CLUE.pulse();
   }else{p.classList.remove('bad');void p.offsetWidth;p.classList.add('bad');strike('pulse')}
 };
 
 /* ---------- switches: flip each one to match the arrows (OPPOSITE = the other way) ---------- */
 $('#sws').onclick=e=>{
-  const s=e.target.closest('.sw2');if(!s||G.over||G.solved.has('switches'))return;
+  const s=e.target.closest('.sw2');if(!s||G.over||G.solved.has('switches')||!allowed('switches'))return;
   const Sd=G.sw,i=+s.dataset.i;
   if(Sd.state[i]===Sd.target[i]){s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');strike('switches');return}
   Sd.state[i]=!Sd.state[i];s.classList.toggle('up',Sd.state[i]);s.setAttribute('aria-label',`Switch ${i+1}, ${Sd.state[i]?'up':'down'}`);SFX.clack(Sd.state[i]);
@@ -1071,11 +1252,66 @@ function driftDial(){
   gl(Dd.drift,driftDial);
 }
 $('#m-dial').addEventListener('click',e=>{
-  const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial'))return;
+  const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial')||!allowed('dial'))return;
   const d=+b.dataset.d;
   if(d){turnDial(d);SFX.ratchet();return}
   if(G.dial.val===G.dial.target){SFX.thunk();solve('dial')}else strike('dial');
 });
+
+/* ---------- slider: drag to the number and let go ---------- */
+let slKbd=false;
+function commitSlider(i){
+  if(!G||G.over||G.solved.has('slider'))return;
+  const s=G.sl.items[i],r=$(`#sliders .rng[data-i="${i}"]`);if(!s||s.done||!r)return;
+  const now=performance.now();if(now-s.at<250)return;s.at=now;            // one release counts once
+  if(!allowed('slider')){r.value=s.val;r.nextElementSibling.textContent=s.val;return}
+  s.val=+r.value;
+  if(s.val===s.target){s.done=true;r.disabled=true;SFX.thunk();if(G.sl.items.every(x=>x.done))solve('slider');else CLUE.slider()}
+  else strike('slider');
+}
+const slEl=$('#sliders');
+slEl.addEventListener('input',e=>{const r=e.target.closest('.rng');if(!r)return;r.nextElementSibling.textContent=r.value;SFX.ratchet(.06)});
+slEl.addEventListener('pointerdown',()=>{slKbd=false});
+slEl.addEventListener('pointerup',e=>{const r=e.target.closest('.rng');if(r)commitSlider(+r.dataset.i)});
+slEl.addEventListener('change',e=>{const r=e.target.closest('.rng');if(r&&!slKbd)commitSlider(+r.dataset.i)});
+slEl.addEventListener('keydown',e=>{const r=e.target.closest('.rng');if(!r)return;slKbd=true;if(e.key==='Enter'){e.preventDefault();commitSlider(+r.dataset.i)}});
+function moveSlider(){
+  if(!G||G.over||G.solved.has('slider'))return;
+  for(const s of G.sl.items)if(!s.done)s.target=s.target===0?1:s.target===9?8:s.target+(Math.random()<.5?-1:1);
+  CLUE.slider();beep(1700,.02,'sine',.03);gl(G.sl.move,moveSlider);
+}
+
+/* ---------- decoy: a fake module; touching it is a mistake ---------- */
+function touchDecoy(e){
+  if(!G||G.over||!G.decoy||!playing())return;if(e)e.preventDefault();
+  const m=$('#m-decoy');m.classList.remove('zap');void m.offsetWidth;m.classList.add('zap');
+  if(!G.decoy.revealed){G.decoy.revealed=true;drawDecoy()}
+  try{ac&&noiseBurst(ac.currentTime,.25,9000,2000,.35,1)}catch(err){}
+  strike();
+}
+$('#m-decoy').addEventListener('pointerdown',touchDecoy);
+$('#dbig').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')touchDecoy(e)});
+
+/* ---------- chain: modules must be solved in their numbered order ---------- */
+// plain chains just lock the others; on blind chains the numbers hide, and touching the wrong module is a mistake
+function allowed(id){
+  if(!G||!G.chain||G.over||G.chain[G.ci]===id)return true;
+  if(G.lvl.chain.blind){const m=$('#m-'+id);m.classList.remove('zap');void m.offsetWidth;m.classList.add('zap');strike();if(!G.over)peekChain()}
+  return false;
+}
+function peekChain(){
+  const t=G.chain&&G.lvl.chain.blind;if(!t)return;
+  G.chainHid=false;drawChain();clearTimeout(G.cht);
+  G.cht=setTimeout(()=>{if(G.over)return;G.chainHid=true;drawChain()},t);GT.push(G.cht);
+}
+
+/* ---------- shuffle: modules (and on some levels wires and keys) swap places ---------- */
+function shuffleEls(sel){const els=[...document.querySelectorAll(sel)],o=els.map((_,i)=>i).sort(()=>Math.random()-.5);els.forEach((el,i)=>{el.style.order=o[i]})}
+function shuffleMods(){
+  const ids=[...G.active,...(G.decoy?['decoy']:[])],o=ids.map((_,i)=>i).sort(()=>Math.random()-.5);
+  ids.forEach((id,i)=>{const m=$('#m-'+id);m.style.order=o[i];m.classList.remove('shuf');void m.offsetWidth;m.classList.add('shuf')});
+  beep(500,.05,'triangle',.05);
+}
 
 /* ---------- final lock: unscrew the plate, read the code, type it in ---------- */
 function drawEntry(){const d=$('#vdisp');d.className='vdisp';d.textContent=(G.entry+'·'.repeat(G.code.length)).slice(0,G.code.length);d.classList.toggle('long',G.code.length>4)}
@@ -1123,7 +1359,7 @@ $('#plate').onclick=e=>{
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
 // reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
 let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
-preview();showOver(S.current?'brief':'name');submitScore();submitTimes();
+preview();showOver(S.current?'brief':'name');submitScore();submitTimes();submitDaily();
 if(wasBoard&&S.current&&lbOn()){boardFrom='map';boardLvl=lvl;boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
