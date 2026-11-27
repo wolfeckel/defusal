@@ -215,6 +215,35 @@ margin:0 26px 10px 0;min-height:44px;display:flex;flex-wrap:wrap;align-items:cen
 letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);box-shadow:inset 0 3px 8px #000}
 .codebig.gone{color:#2f5a3c;text-shadow:none}
 .hwrap{min-height:170px}
+/* switches */
+.sws{display:flex;justify-content:center;gap:8px;padding:6px 0}
+.sw2{position:relative;width:36px;height:84px;padding:0;border:0;border-radius:18px;background:#1b1e21;box-shadow:inset 0 3px 8px #000;cursor:pointer}
+.sw2 .knob{position:absolute;left:4px;right:4px;bottom:4px;height:36px;border-radius:14px;background:linear-gradient(#e9e4d4,#a9a395);box-shadow:0 3px 0 #6d685c;transition:bottom .12s}
+.sw2.up .knob{bottom:44px}
+.sw2.bad{animation:bad .4s}.sw2:focus-visible{outline:3px solid #fff}
+.arrows{font-size:22px;letter-spacing:.12em}
+.opp{background:#f2c230;color:#161616;padding:1px 6px;border-radius:4px;font:800 14px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-shadow:none}
+.rev{color:#f2c230;text-shadow:0 0 8px rgba(242,194,48,.6)}
+.qq{opacity:.6;letter-spacing:.2em}
+.big2{font-size:24px}
+/* dial */
+.dialw{display:flex;flex-direction:column;align-items:center;gap:10px}
+.dial{position:relative;width:min(140px,100%);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5a636c,#23272b 70%);box-shadow:0 6px 0 #15181b,inset 0 2px 0 #7a838c}
+.dn{position:absolute;transform:translate(-50%,-50%);font:16px "Share Tech Mono",monospace;color:#c9ced3}
+.needle{position:absolute;left:50%;top:16%;width:6px;height:34%;margin-left:-3px;border-radius:3px;background:var(--red);box-shadow:0 0 8px rgba(255,59,47,.6);transform-origin:50% 100%;transition:transform .15s}
+.hub{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:#1b1e21}
+.drow{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:6px;width:100%}
+.dbtn{min-height:44px;border:0;border-radius:10px;background:#1f2327;color:#e8eaec;font:20px system-ui,sans-serif;box-shadow:0 4px 0 #0d0f11;cursor:pointer}
+.dbtn.lock{background:#1f5134;font:800 16px "Barlow Condensed",sans-serif;letter-spacing:.06em}
+.dbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0d0f11}.dbtn:focus-visible{outline:3px solid #fff}
+/* level map: world headers, boss and sudden-death tiles */
+.wh{grid-column:1/-1;text-align:left;font-size:18px;letter-spacing:.08em;text-transform:uppercase;color:#f2c230;margin:14px 0 0}
+.lv{position:relative}
+.lv.boss{box-shadow:0 4px 0 #1b1e21,inset 0 0 0 3px var(--red)}
+.skull{position:absolute;top:3px;right:4px;font-style:normal;font-size:12px}
+/* six-digit codes */
+.vdisp.long{letter-spacing:.2em;text-indent:.2em}
+.codebig.long{letter-spacing:.1em;text-indent:.1em;font-size:clamp(30px,8vw,42px)}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -236,6 +265,9 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
       <div class="btnmod" id="btnmod"><button class="big" id="big">PUSH</button><div class="meter" aria-hidden="true"><div class="zone" id="zone"></div><div class="fill" id="fill"></div></div></div></div>
     <div class="mod" id="m-keys"><span class="led"></span><div class="clue" id="c-keys" aria-live="polite"></div><div class="keys" id="keys"></div></div>
     <div class="mod" id="m-pulse"><span class="led"></span><div class="clue" id="c-pulse" aria-live="polite"></div><div class="pads" id="pads"></div></div>
+    <div class="mod" id="m-switches"><span class="led"></span><div class="clue" id="c-switches" aria-live="polite"></div><div class="sws" id="sws"></div></div>
+    <div class="mod" id="m-dial"><span class="led"></span><div class="clue" id="c-dial" aria-live="polite"></div>
+      <div class="dialw"><div class="dial" id="dial"></div><div class="drow"><button class="dbtn" data-d="-1" aria-label="Turn left">◀</button><button class="dbtn lock" data-d="0">LOCK</button><button class="dbtn" data-d="1" aria-label="Turn right">▶</button></div></div></div>
   </div>
   <div class="vault mod" id="m-final" hidden><span class="led"></span><div class="clue" id="c-final" aria-live="polite"></div>
     <div class="vgrid">
@@ -290,12 +322,17 @@ const PC=['red','blue','green','yellow'];
 let PENALTY=10000;
 
 /* ---------- levels: each one adds a little more ---------- */
-// wires {n:[min,max], clues, cuts} · button {kinds, zone %, speed s} · keys {n, len, memo ms} · pulse {stages, ms} · final {memo ms}
-const ORDER=['wires','button','keys','pulse'];
-const W=(n,clues,cuts=1)=>({n,clues,cuts}), B=(kinds,zone=30,speed=2)=>({kinds,zone,speed}), K=(n,len,memo=0)=>({n,len,memo}), P=(stages,ms=500)=>({stages,ms});
-const WALL=['color','num','ord','odd'], BALL=['tap','taps','hold'];
-const LV=(t,time,pen,mods,intro,final)=>({t,time,pen,mods,intro,final});
+// wires {n:[min,max], clues, cuts} · button {kinds, zone %, speed s, slide s} · keys {n, len, memo ms, rev chance}
+// pulse {stages, ms, rev chance} · switches {n, opp chance, memo ms} · dial {drift ms}
+// level extras: final {len, memo} · hide (ms before every instruction screen goes blank) · sd (sudden death) · boss
+const ORDER=['wires','button','keys','pulse','switches','dial'];
+const W=(n,clues,cuts=1)=>({n,clues,cuts}), B=(kinds,zone=30,speed=2,slide=0)=>({kinds,zone,speed,slide}),
+  K=(n,len,memo=0,rev=0)=>({n,len,memo,rev}), P=(stages,ms=500,rev=0)=>({stages,ms,rev}),
+  SW=(n,opp=0,memo=0)=>({n,opp,memo}), D=(drift=0)=>({drift});
+const WALL=['color','num','ord','odd'], W2=[...WALL,'all'], BALL=['tap','taps','hold'];
+const LV=(t,time,pen,mods,intro,final,x={})=>({t,time,pen,mods,intro,final,...x});
 const LEVELS=[
+ // ── World 1 · Training
  LV('First cut',45,5,{wires:W([3,3],['color'])},'Cut the wire the screen shows.'),
  LV('By number',45,5,{wires:W([4,4],['num'])},'Wires are numbered.'),
  LV('Which one?',45,5,{wires:W([4,5],['ord'])},'Count from the top.'),
@@ -322,7 +359,82 @@ const LEVELS=[
  LV('Memory',120,12,{wires:W([5,7],WALL,3),button:B(BALL,15,1.3),keys:K(6,5,2200),pulse:P(4,400)},'Remember everything.',{memo:2500}),
  LV('Long pulse',120,15,{wires:W([5,7],WALL,3),button:B(BALL,15,1.3),keys:K(6,5,2000),pulse:P(5,340)},'Five flashes.',{memo:2200}),
  LV('Short fuse',105,15,{wires:W([5,7],WALL,3),button:B(BALL,13,1.15),keys:K(6,5,1800),pulse:P(5,330)},'Short fuse.',{memo:2000}),
- LV('Expert',95,20,{wires:W([6,7],WALL,3),button:B(BALL,12,1.05),keys:K(6,5,1600),pulse:P(5,310)},'The final test.',{memo:1800})];
+ LV('Expert',95,20,{wires:W([6,7],WALL,3),button:B(BALL,12,1.05),keys:K(6,5,1600),pulse:P(5,310)},'The final test of training.',{memo:1800}),
+ // ── World 2 · Twists
+ LV('All the reds',45,5,{wires:W([5,7],['all'])},'Cut every wire of that colour.'),
+ LV('Clean sweep',50,8,{wires:W([5,7],['all','color','ord'],2)},'Mixed cuts.'),
+ LV('Twister',120,10,{wires:W([5,7],W2,2),button:B(BALL,22,1.5),keys:K(6,4),pulse:P(4,420)},'Boss level.',{memo:0},{boss:1}),
+ LV('Backwards',45,5,{keys:K(4,4,0,1)},'◀ means press them in reverse.'),
+ LV('Either way',50,8,{keys:K(6,5,0,.5)},'Watch for the ◀.'),
+ LV('Moving target',45,5,{button:B(['hold'],28,1.8,2.4)},'The green zone moves.'),
+ LV('Slippery',45,8,{button:B(BALL,20,1.5,1.8)},'Faster, smaller zone.'),
+ LV('Mirror image',55,5,{pulse:P(3,480,1)},'◀ means repeat it backwards.'),
+ LV('Which way?',60,8,{pulse:P(4,420,.5)},'Forwards or backwards?'),
+ LV('Long code',80,8,{wires:W([5,7],W2,2),button:B(BALL,22,1.5,2.2)},'Six-digit code.',{len:6}),
+ LV('Twist mix',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(4,420,.5)},'Every twist at once.',{len:4}),
+ LV('Twist and shout',115,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(4,400,.5)},'Tighter.',{len:6}),
+ LV('Big twist',105,12,{wires:W([6,7],W2,3),button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(5,380,.5)},'Boss level.',{len:6,memo:2500},{boss:1}),
+ // ── World 3 · Switches
+ LV('Flip',40,5,{switches:SW(3)},'New: Switches. Match the arrows.'),
+ LV('Five switches',40,5,{switches:SW(5)},'Five of them.'),
+ LV('Opposite',45,5,{switches:SW(4,1)},'OPPOSITE: flip the other way.'),
+ LV('Switcheroo',45,8,{switches:SW(5,.5)},'Watch for OPPOSITE.'),
+ LV('Snapshot',45,8,{switches:SW(5,0,2000)},'Remember the pattern.'),
+ LV('Flip and cut',70,8,{switches:SW(5,.5),wires:W([5,7],W2,2)},'Switches + Wires.'),
+ LV('Flip and key',70,8,{switches:SW(5,.5),keys:K(6,5,0,.5)},'Switches + Keypad.'),
+ LV('Flip and hold',70,10,{switches:SW(5,.5,1800),button:B(BALL,20,1.5,2)},'Switches + Button.'),
+ LV('Four-way',120,10,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),pulse:P(4,420,.5),switches:SW(5,.5)},'Four modules.',{len:4}),
+ LV('Switchboard',110,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),switches:SW(5,.5,1800)},'Boss level.',{len:6},{boss:1}),
+ // ── World 4 · Dial
+ LV('Dial',40,5,{dial:D()},'New: the Dial. Turn it, then LOCK.'),
+ LV('Tune in',35,5,{dial:D()},'Quicker.'),
+ LV('Drift',40,5,{dial:D(1500)},'It drifts back. Be quick.'),
+ LV('Strong drift',40,8,{dial:D(900)},'Faster drift.'),
+ LV('Dial and flip',60,8,{dial:D(1200),switches:SW(5,.5)},'Dial + Switches.'),
+ LV('Dial and pulse',70,8,{dial:D(1200),pulse:P(4,420,.5)},'Dial + Pulse.'),
+ LV('Dial and key',70,10,{dial:D(1000),keys:K(6,5,1800,.5)},'Dial + Keypad.'),
+ LV('Radio',85,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),dial:D(1000)},'Three modules.'),
+ LV('Tuned rig',120,10,{keys:K(6,5,0,.5),pulse:P(4,420,.5),switches:SW(5,.5),dial:D(900)},'Four modules.',{len:4}),
+ LV('Radio silence',110,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),switches:SW(5,.5,1500),dial:D(800)},'Boss level.',{len:6},{boss:1}),
+ // ── World 5 · Memory: every instruction screen goes blank after a moment
+ LV('Blink',50,5,{wires:W([5,7],W2,2)},'Instructions vanish. Memorise them.',undefined,{hide:3000}),
+ LV('Blink twice',60,8,{button:B(BALL,22,1.5),switches:SW(5,.5)},'Two modules, both vanish.',undefined,{hide:3000}),
+ LV('Gone',70,8,{dial:D(1200),keys:K(6,5,0,.5)},'Dial + Keypad, vanishing.',undefined,{hide:2500}),
+ LV('Recall',85,10,{wires:W([5,7],W2,2),switches:SW(5,.5),dial:D(1200)},'Three modules.',undefined,{hide:2500}),
+ LV('Total recall',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(4,420,.5)},'Four modules.',{memo:2500},{hide:2500}),
+ LV('Flash',75,10,{wires:W([5,7],W2,3),keys:K(6,5,0,.5)},'Shorter glimpses.',undefined,{hide:2000}),
+ LV('Ghost',90,10,{button:B(BALL,18,1.4,1.8),dial:D(1000),pulse:P(4,400,.5)},'Three modules.',undefined,{hide:2000}),
+ LV('Mind palace',125,12,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),switches:SW(5,.5),dial:D(1000)},'Six-digit code.',{len:6,memo:2000},{hide:2000}),
+ LV('Fading',120,12,{button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5)},'Faster.',{memo:2000},{hide:1800}),
+ LV('Amnesia',115,15,{wires:W([6,7],W2,3),button:B(BALL,16,1.3,1.6),switches:SW(5,.5),dial:D(900)},'Boss level.',{len:6,memo:1800},{hide:1500,boss:1}),
+ // ── World 6 · Sudden death: on 💀 levels one mistake sets it off
+ LV('Sudden death',60,0,{wires:W([5,7],W2,2)},'One mistake and it blows.',undefined,{sd:1}),
+ LV('Steady',50,0,{button:B(BALL,24,1.6)},'Steady hands.',undefined,{sd:1}),
+ LV('Careful',80,0,{keys:K(6,5,0,.5),switches:SW(5,.5)},'Take your time.',undefined,{sd:1}),
+ LV('Breather',120,10,{wires:W([5,7],W2,2),button:B(BALL,18,1.4,1.8),pulse:P(4,400,.5),dial:D(1000)},'Mistakes cost time again.',{len:4}),
+ LV('Knife edge',90,0,{dial:D(1200),pulse:P(4,420,.5)},'Dial + Pulse.',undefined,{sd:1}),
+ LV('No second chances',110,0,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5)},'Three modules.',undefined,{sd:1}),
+ LV('Second wind',120,12,{keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5),dial:D(900)},'Vanishing again.',{len:6,memo:2200},{hide:2200}),
+ LV('Hair trigger',150,0,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),switches:SW(5,.5)},'Four modules.',{len:4},{sd:1}),
+ LV('Cold sweat',140,0,{button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(4,400,.5),dial:D(1000)},'Six-digit code.',{len:6},{sd:1}),
+ LV("Dead man's switch",150,0,{wires:W([6,7],W2,3),button:B(BALL,18,1.4,1.8),switches:SW(5,.5),dial:D(900)},'Boss level.',{len:6},{sd:1,boss:1})];
+// ── World 7 · Gauntlet (81–100): every module type in rotating sets of four, tightening to level 100
+{
+  const SETS=[['wires','button','keys','pulse'],['switches','dial','wires','keys'],['button','pulse','switches','dial'],['wires','keys','dial','switches'],['pulse','button','wires','dial'],['keys','switches','pulse','button']];
+  const MID={wires:W([5,7],W2,3),button:B(BALL,16,1.3,1.8),keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5),dial:D(900)};
+  const HARD={wires:W([6,7],W2,3),button:B(BALL,13,1.15,1.5),keys:K(6,5,1600,.5),pulse:P(5,320,.5),switches:SW(5,.5,1500),dial:D(750)};
+  const NAMES=['Gauntlet','Overdrive','Pressure cooker','Live wire','Hot seat','Countdown','Redline','Zero hour','Meltdown','Ground zero',
+    'Afterburn','Tripwire','Crossfire','Deadline','Firewall','Fuse box','Last stand','No return','Final countdown','Master'];
+  const SD=new Set([84,88,93,97]);
+  NAMES.forEach((t,i)=>{
+    const n=81+i,cfg=i<10?MID:HARD,mods={};SETS[i%SETS.length].forEach(k=>mods[k]=cfg[k]);
+    const boss=n%10===0,sd=SD.has(n),hide=i%3===2?Math.round(2500-i*50):0;
+    LEVELS.push(LV(t,Math.round(125-i*2.2)+(boss?10:0),sd?0:12+Math.floor(i/3),mods,
+      n===100?'The last bomb. Good luck.':boss?'Boss level.':sd?'One mistake and it blows.':hide?'Instructions vanish.':'Everything at once.',
+      {len:n>=91?6:4,memo:n>=86?2000-(i-5)*40:0},{boss,sd,hide}));
+  });
+}
+const WORLDS=[[1,'Training'],[28,'Twists'],[41,'Switches'],[51,'Dial'],[61,'Memory'],[71,'Sudden death'],[81,'Gauntlet']];
 
 /* ---------- player & progress (saved in this browser) ---------- */
 const STORE='defusal';
@@ -330,6 +442,8 @@ let S=null;try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){}
 if(!S||!S.players)S={current:'',players:{}};
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
 const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{}});
+// older saves capped "unlocked" at the old last level: open the level after the furthest one cleared
+for(const p of Object.values(S.players)){const top=Math.max(-1,...Object.keys(p.best||{}).map(Number));p.unlocked=Math.min(Math.max(p.unlocked||0,top+1),LEVELS.length-1)}
 let lvl=0;
 
 /* ---------- state ---------- */
@@ -338,59 +452,67 @@ const gl=(ms,f)=>GT.push(setTimeout(f,ms));
 
 /* ---------- puzzle generation ---------- */
 const cp=c=>`<span class="cp" style="background:${COL[c]};color:${c==='white'||c==='yellow'?'#111':'#fff'}">${c.toUpperCase()}</span>`;
-const ORD=['1ST','2ND','3RD','4TH','5TH','6TH'];
-// a clue for one wire that is still uncut; counts and positions use every wire so the wording never shifts
+const ORD=['1ST','2ND','3RD','4TH','5TH','6TH','7TH'];
+// one wire instruction; counts and positions use every wire so the wording never shifts as wires are cut
 function wireClue(w,cut,type){
   const live=i=>!cut.has(i),idx=c=>w.map((x,i)=>x===c?i:-1).filter(i=>i>=0),cols=[...new Set(w)];
-  if(type==='color'){const cs=cols.filter(c=>idx(c).length===1&&live(idx(c)[0]));if(!cs.length)return null;const c=pick(cs);return{html:`CUT ${cp(c)}`,ans:idx(c)[0]}}
-  if(type==='num'){const l=w.map((_,i)=>i).filter(live);const i=pick(l);return{html:`CUT #${i+1}`,ans:i}}
-  if(type==='ord'){const cs=cols.filter(c=>idx(c).length>=2&&idx(c).some(live));if(!cs.length)return null;const c=pick(cs),p=idx(c),ks=p.map((_,k)=>k).filter(k=>live(p[k])),k=pick(ks);
-    return{html:`CUT ${k===p.length-1?'LAST':ORD[k]} ${cp(c)}`,ans:p[k]}}
-  if(type==='odd'){if(cut.size||w.length<3||cols.length!==2)return null;const c=cols.find(c=>idx(c).length===1);return c?{html:'CUT THE ODD ONE',ans:idx(c)[0]}:null}
+  if(type==='color'){const cs=cols.filter(c=>idx(c).length===1&&live(idx(c)[0]));if(!cs.length)return null;const c=pick(cs);return{html:`CUT ${cp(c)}`,ans:idx(c)}}
+  if(type==='num'){const l=w.map((_,i)=>i).filter(live);const i=pick(l);return{html:`CUT #${i+1}`,ans:[i]}}
+  if(type==='ord'){const cs=cols.filter(c=>idx(c).length>=2&&idx(c).some(live));if(!cs.length)return null;const c=pick(cs),p=idx(c),k=pick(p.map((_,k)=>k).filter(k=>live(p[k])));
+    return{html:`CUT ${k===p.length-1?'LAST':ORD[k]} ${cp(c)}`,ans:[p[k]]}}
+  if(type==='odd'){if(cut.size||w.length<3||cols.length!==2)return null;const c=cols.find(c=>idx(c).length===1);return c?{html:'CUT THE ODD ONE',ans:idx(c)}:null}
+  if(type==='all'){const cs=cols.filter(c=>idx(c).length>=2&&idx(c).every(live));if(!cs.length)return null;const c=pick(cs);return{html:`CUT ALL ${cp(c)}`,ans:idx(c)}}
 }
 function makeWires(cfg){
   const cols=Object.keys(COL);
   for(;;){
     const n=cfg.n[0]+rnd(cfg.n[1]-cfg.n[0]+1);let w;
-    if(cfg.clues.includes('odd')&&(cfg.clues.length===1||Math.random()<.25)){const a=pick(cols),b=pick(cols.filter(x=>x!==a));w=Array(n).fill(a);w[rnd(n)]=b}
+    if(cfg.clues.includes('odd')&&(cfg.clues.length===1||Math.random()<.2)){const a=pick(cols),b=pick(cols.filter(x=>x!==a));w=Array(n).fill(a);w[rnd(n)]=b}
     else w=Array.from({length:n},()=>pick(cols));
     const cut=new Set(),steps=[];
-    for(let k=0;k<cfg.cuts;k++){const s=shuffle(cfg.clues).map(t=>wireClue(w,cut,t)).find(Boolean);if(!s)break;steps.push(s);cut.add(s.ans)}
-    if(steps.length===cfg.cuts)return{wires:w,cut:new Set(),steps,step:0};
+    for(let k=0;k<cfg.cuts;k++){const s=shuffle(cfg.clues).map(t=>wireClue(w,cut,t)).find(Boolean);if(!s)break;steps.push(s);s.ans.forEach(i=>cut.add(i))}
+    if(steps.length===cfg.cuts&&cut.size<n)return{wires:w,cut:new Set(),steps,step:0};
   }
 }
 function makeButton(cfg){
   const kind=pick(cfg.kinds),n=kind==='taps'?3+rnd(3):1,z0=15+rnd(Math.max(1,80-cfg.zone));
-  return{kind,n,left:n,zone:[z0,z0+cfg.zone],speed:cfg.speed,color:pick(['red','blue','yellow','white']),downAt:0,fill:0};
+  return{kind,n,left:n,zone:[z0,z0+cfg.zone],cur:[z0,z0+cfg.zone],size:cfg.zone,speed:cfg.speed,slide:kind==='hold'?cfg.slide:0,ph:Math.random()*6.28,
+    color:pick(['red','blue','yellow','white']),downAt:0,fill:0};
 }
-function makeKeys(cfg){const shown=shuffle(SYMS).slice(0,cfg.n);return{shown,seq:shuffle(shown).slice(0,cfg.len),hits:0,hidden:false,memo:cfg.memo}}
+function makeKeys(cfg){const shown=shuffle(SYMS).slice(0,cfg.n);return{shown,seq:shuffle(shown).slice(0,cfg.len),hits:0,memo:cfg.memo,rev:Math.random()<cfg.rev}}
+function makeSwitches(cfg){
+  const n=cfg.n,show=Array.from({length:n},()=>Math.random()<.5),opp=Math.random()<cfg.opp,target=show.map(u=>opp?!u:u);let state;
+  do{state=Array.from({length:n},()=>Math.random()<.5)}while(state.filter((s,i)=>s!==target[i]).length<Math.min(2,n));
+  return{n,show,opp,target,state,memo:cfg.memo};
+}
+function makeDial(cfg){const target=rnd(10);let val;do{val=rnd(10)}while(Math.min((val-target+10)%10,(target-val+10)%10)<3);return{target,val,home:val,ang:val*36,drift:cfg.drift}}
 
 function newGame(){
   const L=LEVELS[lvl],M=L.mods;PENALTY=L.pen*1000;
   GT.forEach(clearTimeout);GT=[];
-  G={lvl:L,active:ORDER.filter(k=>M[k]),left:L.time*1000,strikes:0,over:false,solved:new Set(),
+  const pc=M.pulse||P(3);
+  G={lvl:L,active:ORDER.filter(k=>M[k]),left:L.time*1000,strikes:0,over:false,solved:new Set(),hid:{},
     w:makeWires(M.wires||W([3,6],WALL)),btn:makeButton(M.button||B(BALL)),keys:makeKeys(M.keys||K(4,4)),
-    pulse:{seq:Array.from({length:(M.pulse||P(3)).stages},()=>pick(PC)),stage:1,idx:0,of:(M.pulse||P(3)).stages,ms:(M.pulse||P(3)).ms,watching:false}};
-  G.code=Array.from({length:4},()=>rnd(10)).join('');
+    pulse:{seq:Array.from({length:pc.stages},()=>pick(PC)),stage:1,idx:0,of:pc.stages,ms:pc.ms,rev:Math.random()<pc.rev,watching:false},
+    sw:makeSwitches(M.switches||SW(4)),dial:makeDial(M.dial||D())};
+  G.code=Array.from({length:(L.final&&L.final.len)||4},()=>rnd(10)).join('');
   G.stage='modules';G.entry='';G.busy=false;G.screws=0;
   render();
 }
 
 /* ---------- rendering ---------- */
-const DONE='✓ CLEAR';
+const DONE='✓ CLEAR', QQ='<span class="qq">? ? ?</span>';
 function render(){
   const Wd=G.w;
   $('#wires').innerHTML=Wd.wires.map((c,i)=>`<button class="wire" data-i="${i}" aria-label="Wire ${i+1}, ${c}"><span class="n">${i+1}</span><span class="cable" style="background:${COL[c]}"></span><span class="post"></span></button>`).join('');
-  drawWireClue();
   const b=$('#big'),Bt=G.btn;b.style.background=COL[Bt.color];b.style.color=Bt.color==='white'||Bt.color==='yellow'?'#161616':'#fff';b.textContent='PUSH';
-  $('#btnmod').classList.toggle('nometer',Bt.kind!=='hold');
-  $('#zone').style.bottom=Bt.zone[0]+'%';$('#zone').style.height=(Bt.zone[1]-Bt.zone[0])+'%';$('#fill').style.height='0%';
-  drawBtnClue();
+  $('#btnmod').classList.toggle('nometer',Bt.kind!=='hold');drawZone();$('#fill').style.height='0%';
   const k=$('#keys');k.classList.toggle('six',G.keys.shown.length>4);
   k.innerHTML=G.keys.shown.map(s=>`<button class="key" data-s="${s}" aria-label="Symbol ${s}">${s}</button>`).join('');
-  drawKeysClue();
   $('#pads').innerHTML=PC.map(c=>`<button class="pad" data-c="${c}" aria-label="${c} pad" style="background:${COL[c]};color:${COL[c]}"></button>`).join('');
-  drawPulse();
+  $('#sws').innerHTML=G.sw.state.map((u,i)=>`<button class="sw2${u?' up':''}" data-i="${i}" aria-label="Switch ${i+1}, ${u?'up':'down'}"><span class="knob"></span></button>`).join('');
+  $('#dial').innerHTML=Array.from({length:10},(_,d)=>{const a=(d*36-90)*Math.PI/180;return`<span class="dn" style="left:${50+40*Math.cos(a)}%;top:${50+40*Math.sin(a)}%">${d}</span>`}).join('')+'<span class="needle" id="needle"></span><span class="hub"></span>';
+  drawDial();
   document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done'));
   const mods=$('.mods');mods.hidden=false;mods.classList.remove('lift');$('#m-final').hidden=true;
   ORDER.forEach(id=>$('#m-'+id).hidden=!G.active.includes(id));mods.classList.toggle('one',G.active.length===1);
@@ -400,30 +522,48 @@ function render(){
   $('#c-final').classList.toggle('hint',!!G.lvl.final&&!(prev&&prev.final));
   $('#clock').classList.remove('safe');
   $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
-  const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');$('#c-final').textContent='UNSCREW THE PLATE';drawEntry();
+  const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');cs.classList.toggle('long',G.code.length>4);$('#c-final').textContent='UNSCREW THE PLATE';drawEntry();
   $('#hudLvl').textContent=`Level ${lvl+1}`;
-  drawStrikes();drawClock();
+  ORDER.forEach(id=>CLUE[id]());drawStrikes();drawClock();
 }
-function drawWireClue(){const Wd=G.w,s=Wd.steps[Wd.step];$('#c-wires').innerHTML=G.solved.has('wires')?DONE:(Wd.steps.length>1?`<small>${Wd.step+1}/${Wd.steps.length}</small>`:'')+s.html}
-function drawBtnClue(){const Bt=G.btn;$('#c-button').textContent=G.solved.has('button')?DONE:Bt.kind==='hold'?'HOLD · LET GO IN GREEN':Bt.kind==='taps'?`TAP ×${Bt.left}`:'TAP'}
-function drawKeysClue(){const Kd=G.keys;$('#c-keys').innerHTML=G.solved.has('keys')?DONE:Kd.seq.map((s,i)=>`<span class="sq${i<Kd.hits?' ok':''}">${i<Kd.hits||!Kd.hidden?s:'?'}</span>`).join('')}
-function drawPulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.watching?'WATCH…':'REPEAT'} <small>${Pd.stage}/${Pd.of}</small>`}
-const drawStrikes=()=>{const m=$('#mist');m.querySelector('b').textContent=G.strikes;m.classList.toggle('bad',G.strikes>0)};
+const CLUE={
+  wires(){const Wd=G.w,s=Wd.steps[Wd.step];$('#c-wires').innerHTML=G.solved.has('wires')?DONE:(Wd.steps.length>1?`<small>${Wd.step+1}/${Wd.steps.length}</small>`:'')+(G.hid.wires?QQ:s.html)},
+  button(){const Bt=G.btn;$('#c-button').innerHTML=G.solved.has('button')?DONE:G.hid.button?QQ:Bt.kind==='hold'?'HOLD · LET GO IN GREEN':Bt.kind==='taps'?`TAP ×${Bt.left}`:'TAP'},
+  keys(){const Kd=G.keys,n=Kd.seq.length,ok=i=>Kd.rev?i>=n-Kd.hits:i<Kd.hits;
+    $('#c-keys').innerHTML=G.solved.has('keys')?DONE:(Kd.rev?'<b class="rev">◀</b>':'')+Kd.seq.map((s,i)=>`<span class="sq${ok(i)?' ok':''}">${ok(i)||!G.hid.keys?s:'?'}</span>`).join('')},
+  pulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.watching?'WATCH…':'REPEAT'}${Pd.rev?' <b class="rev">◀</b>':''} <small>${Pd.stage}/${Pd.of}</small>`},
+  switches(){const Sd=G.sw;$('#c-switches').innerHTML=G.solved.has('switches')?DONE:(Sd.opp?'<b class="opp">OPPOSITE</b>':'')+(G.hid.switches?QQ:`<span class="arrows">${Sd.show.map(u=>u?'▲':'▼').join('')}</span>`)},
+  dial(){$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`TURN TO <b class="big2">${G.hid.dial?'?':G.dial.target}</b> · LOCK`}};
+function drawZone(){const z=G.btn.cur;$('#zone').style.bottom=z[0]+'%';$('#zone').style.height=(z[1]-z[0])+'%'}
+function drawDial(){const n=$('#needle');if(n)n.style.transform=`rotate(${G.dial.ang}deg)`;$('#dial').setAttribute('aria-label','Dial at '+G.dial.val)}
+// legacy names used elsewhere
+const drawWireClue=CLUE.wires,drawBtnClue=CLUE.button,drawKeysClue=CLUE.keys,drawPulse=CLUE.pulse;
+const drawStrikes=()=>{const m=$('#mist');m.querySelector('b').textContent=G.lvl.sd?'💀':G.strikes;m.classList.toggle('bad',G.strikes>0)};
 const clockText=()=>{const s=Math.max(0,Math.ceil(G.left/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const drawClock=()=>$('#clock').textContent=clockText();
 
 /* ---------- game flow ---------- */
-function strike(){
+// from: the module the mistake happened on, so a vanished instruction can be shown again
+function strike(from){
   if(G.over)return;G.strikes++;drawStrikes();beep(110,.35,'sawtooth',.09);
+  const d=$('#device');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');
+  if(G.lvl.sd){end(false,'One mistake on a 💀 level.');return}
   G.left-=PENALTY;drawClock();
   const lcd=$('#clock'),pen=document.createElement('span');pen.className='pen';const ps=PENALTY/1000;pen.textContent='−'+Math.floor(ps/60)+':'+String(ps%60).padStart(2,'0');
   lcd.parentNode.appendChild(pen);setTimeout(()=>pen.remove(),1300);lcd.classList.remove('hit');void lcd.offsetWidth;lcd.classList.add('hit');
-  const d=$('#device');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');
-  if(G.left<=0){G.left=0;drawClock();end(false,'That last mistake used up the clock.')}
+  if(G.left<=0){G.left=0;drawClock();end(false,'That last mistake used up the clock.');return}
+  if(from)peek(from);
 }
 function solve(id){
-  if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');({wires:drawWireClue,button:drawBtnClue,keys:drawKeysClue,pulse:drawPulse})[id]();beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
+  if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');CLUE[id]();beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
   if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,700);else defused()}
+}
+// memory: show a module's instruction, then blank it after the level's hide time (or the module's own memo time)
+function hideTime(id){const L=G.lvl;return id==='keys'?G.keys.memo||L.hide||0:id==='switches'?G.sw.memo||L.hide||0:id==='pulse'?0:L.hide||0}
+function peek(id){
+  const t=hideTime(id);if(!t||G.solved.has(id))return;
+  G.hid[id]=false;CLUE[id]();clearTimeout(G['ht_'+id]);
+  G['ht_'+id]=setTimeout(()=>{if(G.over||G.solved.has(id))return;G.hid[id]=true;CLUE[id]()},t);GT.push(G['ht_'+id]);
 }
 // stop the clock right away, then show the win screen
 function defused(){
@@ -444,15 +584,21 @@ function end(win,why){
   else{$('#over').hidden=true;explode(()=>showOver('lose',why))}
 }
 
-/* ---------- overlay screens: name · brief · win · lose ---------- */
+/* ---------- overlay screens: name · map · brief · win · lose ---------- */
 let mode='name';
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 const kick=t=>`<div class="kicker">${t}</div>`;
 const chip=(t,c='')=>`<span class="chip ${c}">${t}</span>`;
 const starHTML=n=>`<div class="stars" aria-label="${n} of 3 stars">${[0,1,2].map(i=>`<span style="animation-delay:${.6+i*.25}s">${i<n?'★':'<i>★</i>'}</span>`).join('')}</div>`;
+const worldOf=i=>WORLDS.filter(w=>w[0]<=i+1).length;
 function drawLvls(){
-  const P=prof();
-  $('#lvls').innerHTML=LEVELS.map((L,i)=>{const b=P.best[i];return`<button class="lv${b?' won':''}${i===lvl?' cur':''}" data-i="${i}"${i>P.unlocked?' disabled':''} aria-label="Level ${i+1}${b?', '+b.s+' stars':''}">${i+1}${b?`<small>${'★'.repeat(b.s)}${'☆'.repeat(3-b.s)}</small>`:''}</button>`}).join('');
+  const P=prof();let html='';
+  LEVELS.forEach((L,i)=>{
+    const wd=WORLDS.find(w=>w[0]===i+1);if(wd)html+=`<h3 class="wh">World ${WORLDS.indexOf(wd)+1} · ${wd[1]}</h3>`;
+    const b=P.best[i];
+    html+=`<button class="lv${b?' won':''}${i===lvl?' cur':''}${L.boss?' boss':''}" data-i="${i}"${i>P.unlocked?' disabled':''} aria-label="Level ${i+1}${L.boss?', boss':''}${L.sd?', sudden death':''}${b?', '+b.s+' stars':''}">${L.sd?'<i class="skull">💀</i>':''}${i+1}${b?`<small>${'★'.repeat(b.s)}${'☆'.repeat(3-b.s)}</small>`:''}</button>`;
+  });
+  $('#lvls').innerHTML=html;
 }
 // screens: name · map · brief · win · lose
 function showOver(m,why){
@@ -461,10 +607,11 @@ function showOver(m,why){
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`);title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
-  if(m==='brief'){top=kick(`Level ${n}`);title=L.t;text=L.intro;chips=chip('⏱ '+fmt(L.time))+chip(`✖ −${L.pen}s`);go='PLAY';link='All levels'}
-  if(m==='win'){const r=G.result;top=kick(`Level ${n} cleared`)+starHTML(r.stars);
-    title=last?`Certified, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
-    text=last?'You beat every level.':'';
+  if(m==='brief'){top=kick(`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
+    chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'');go='PLAY';link='All levels'}
+  if(m==='win'){const r=G.result;top=kick(last?'Master technician':`Level ${n} cleared`)+starHTML(r.stars);
+    title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
+    text=last?'All 100 levels defused.':'';
     chips=chip('⏱ '+clockText())+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
   if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY';link='All levels'}
   o.classList.toggle('lost',m==='lose');
@@ -472,6 +619,8 @@ function showOver(m,why){
   const w=$('#who');w.hidden=!link;w.textContent=link;
   $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
+  // on the map, scroll the current level into view
+  if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
 }
 function preview(){resetFX();newGame();G.over=true}
 const toBrief=i=>{lvl=i;preview();showOver('brief')};
@@ -674,34 +823,40 @@ function loop(prev){
 function start(){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){ac=null}
   newGame();$('#over').hidden=true;lastTick=-1;resetFX();scrollTo(0,0);
-  const p=performance.now();loop(p);schedFlash(700);peekKeys();
+  const p=performance.now();loop(p);schedFlash(700);
+  G.active.forEach(peek);
+  if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
 }
 
 /* ---------- wires: cut what the screen says ---------- */
 const spark=el=>{el.classList.remove('spark');void el.offsetWidth;el.classList.add('spark');try{ac&&noiseBurst(ac.currentTime,.25,9000,2000,.35,1)}catch(e){}};
 $('#wires').onclick=e=>{
   const w=e.target.closest('.wire');if(!w||G.over||G.solved.has('wires'))return;
-  const i=+w.dataset.i,Wd=G.w;if(Wd.cut.has(i))return;
-  if(i===Wd.steps[Wd.step].ans){
-    Wd.cut.add(i);w.classList.add('cut');beep(300,.05,'triangle',.06);Wd.step++;
-    if(Wd.step===Wd.steps.length)solve('wires');else{beep(700,.06,'sine',.06);drawWireClue()}
-  }else{spark(w);strike()}
+  const i=+w.dataset.i,Wd=G.w,st=Wd.steps[Wd.step];if(Wd.cut.has(i))return;
+  if(st.ans.includes(i)){
+    Wd.cut.add(i);w.classList.add('cut');beep(300,.05,'triangle',.06);
+    if(!st.ans.every(j=>Wd.cut.has(j)))return;           // "CUT ALL …" still has wires left
+    Wd.step++;
+    if(Wd.step===Wd.steps.length)solve('wires');else{beep(700,.06,'sine',.06);CLUE.wires();peek('wires')}
+  }else{spark(w);strike('wires')}
 };
 
-/* ---------- button: tap, tap ×N, or hold and let go in the green ---------- */
+/* ---------- button: tap, tap ×N, or hold and let go in the green (which may slide) ---------- */
 const big=$('#big');let meterRaf=0;
 function down(){
   if(!G||G.over||G.solved.has('button')||G.btn.downAt)return;
   const Bt=G.btn;Bt.downAt=performance.now();big.classList.add('down');beep(400,.04);
-  if(Bt.kind==='hold'){const t0=Bt.downAt;(function m(){const t=(performance.now()-t0)/1000/Bt.speed;Bt.fill=(1-Math.abs(1-t%2))*100;$('#fill').style.height=Bt.fill+'%';meterRaf=requestAnimationFrame(m)})()}
+  if(Bt.kind==='hold'){const t0=Bt.downAt;(function m(){const s=(performance.now()-t0)/1000,t=s/Bt.speed;Bt.fill=(1-Math.abs(1-t%2))*100;$('#fill').style.height=Bt.fill+'%';
+    if(Bt.slide){const lo=10,hi=90-Bt.size,mid=(lo+hi)/2,amp=(hi-lo)/2,z=mid+amp*Math.sin(Bt.ph+s*6.283/Bt.slide);Bt.cur=[z,z+Bt.size];drawZone()}
+    meterRaf=requestAnimationFrame(m)})()}
 }
 function up(){
   if(!G||!G.btn.downAt)return;
   const Bt=G.btn,dt=performance.now()-Bt.downAt;Bt.downAt=0;big.classList.remove('down');cancelAnimationFrame(meterRaf);
   if(G.over)return;
-  if(Bt.kind==='hold'){const ok=Bt.fill>=Bt.zone[0]&&Bt.fill<=Bt.zone[1];if(!ok){$('#fill').style.height='0%';strike()}else solve('button');return}
-  if(dt>450){strike();return}
-  Bt.left--;if(Bt.left<=0)solve('button');else{beep(600+(Bt.n-Bt.left)*120,.05,'square',.05);drawBtnClue()}
+  if(Bt.kind==='hold'){const ok=Bt.fill>=Bt.cur[0]&&Bt.fill<=Bt.cur[1];if(!ok){$('#fill').style.height='0%';strike('button')}else solve('button');return}
+  if(dt>450){strike('button');return}
+  Bt.left--;if(Bt.left<=0)solve('button');else{beep(600+(Bt.n-Bt.left)*120,.05,'square',.05);CLUE.button()}
 }
 big.addEventListener('pointerdown',e=>{e.preventDefault();big.setPointerCapture?.(e.pointerId);down()});
 big.addEventListener('pointerup',up);big.addEventListener('pointercancel',up);
@@ -709,27 +864,25 @@ big.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat)
 big.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();up()}});
 big.addEventListener('contextmenu',e=>e.preventDefault());
 
-/* ---------- keypad: press the symbols in the order shown ---------- */
-// on memory levels the sequence shows briefly, then hides; a mistake shows it again
-function peekKeys(){const Kd=G.keys;if(!Kd.memo)return;Kd.hidden=false;drawKeysClue();gl(Kd.memo,()=>{Kd.hidden=true;if(!G.solved.has('keys'))drawKeysClue()})}
+/* ---------- keypad: press the symbols in the order shown (◀ = reverse) ---------- */
 $('#keys').onclick=e=>{
   const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit'))return;
-  const Kd=G.keys;
-  if(k.dataset.s===Kd.seq[Kd.hits]){k.classList.add('hit');Kd.hits++;beep(650+Kd.hits*80,.05);if(Kd.hits===Kd.seq.length)solve('keys');else drawKeysClue()}
-  else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike();if(!G.over)peekKeys()}
+  const Kd=G.keys,want=Kd.rev?Kd.seq[Kd.seq.length-1-Kd.hits]:Kd.seq[Kd.hits];
+  if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;beep(650+Kd.hits*80,.05);if(Kd.hits===Kd.seq.length)solve('keys');else CLUE.keys()}
+  else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike('keys')}
 };
 
-/* ---------- pulse: watch the flashes, then repeat them ---------- */
+/* ---------- pulse: watch the flashes, then repeat them (◀ = backwards) ---------- */
 function lightPad(c){document.querySelectorAll('.pad').forEach(p=>p.classList.toggle('lit',p.dataset.c===c))}
 const TONE={red:330,blue:440,green:550,yellow:660};
 function schedFlash(delay){
   clearTimeout(flashT);
   flashT=setTimeout(function run(){
     if(!G||G.over||G.solved.has('pulse')||!G.active.includes('pulse'))return;
-    const Pd=G.pulse,s=Pd.seq.slice(0,Pd.stage);let i=0;Pd.watching=true;Pd.idx=0;drawPulse();
+    const Pd=G.pulse,s=Pd.seq.slice(0,Pd.stage);let i=0;Pd.watching=true;Pd.idx=0;CLUE.pulse();
     (function step(){
       if(G.over)return;
-      if(i>=s.length){lightPad(null);Pd.watching=false;drawPulse();flashT=setTimeout(run,5000);return}
+      if(i>=s.length){lightPad(null);Pd.watching=false;CLUE.pulse();flashT=setTimeout(run,5000);return}
       const c=s[i++];lightPad(c);beep(TONE[c],Pd.ms/1000*.6,'sine',.05);
       flashT=setTimeout(()=>{lightPad(null);flashT=setTimeout(step,Pd.ms*.45)},Pd.ms);
     })();
@@ -738,15 +891,39 @@ function schedFlash(delay){
 $('#pads').onclick=e=>{
   const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse')||Pd.watching)return;
   clearTimeout(flashT);lightPad(p.dataset.c);setTimeout(()=>lightPad(null),180);beep(TONE[p.dataset.c],.15,'sine',.06);
-  if(p.dataset.c===Pd.seq[Pd.idx]){
+  const want=Pd.rev?Pd.seq[Pd.stage-1-Pd.idx]:Pd.seq[Pd.idx];
+  if(p.dataset.c===want){
     Pd.idx++;
-    if(Pd.idx===Pd.stage){Pd.stage++;Pd.idx=0;if(Pd.stage>Pd.of){Pd.stage=Pd.of;solve('pulse');return}drawPulse();schedFlash(800);return}
+    if(Pd.idx===Pd.stage){Pd.stage++;Pd.idx=0;if(Pd.stage>Pd.of){Pd.stage=Pd.of;solve('pulse');return}CLUE.pulse();schedFlash(800);return}
     schedFlash(5000);
-  }else{Pd.idx=0;strike();if(!G.over)schedFlash(1000)}
+  }else{Pd.idx=0;strike('pulse');if(!G.over)schedFlash(1000)}
 };
 
+/* ---------- switches: flip each one to match the arrows (OPPOSITE = the other way) ---------- */
+$('#sws').onclick=e=>{
+  const s=e.target.closest('.sw2');if(!s||G.over||G.solved.has('switches'))return;
+  const Sd=G.sw,i=+s.dataset.i;
+  if(Sd.state[i]===Sd.target[i]){s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');strike('switches');return}
+  Sd.state[i]=!Sd.state[i];s.classList.toggle('up',Sd.state[i]);s.setAttribute('aria-label',`Switch ${i+1}, ${Sd.state[i]?'up':'down'}`);beep(Sd.state[i]?900:700,.04,'square',.05);
+  if(Sd.state.every((u,j)=>u===Sd.target[j]))solve('switches');
+};
+
+/* ---------- dial: turn to the number, then LOCK (on drift levels it creeps back) ---------- */
+function turnDial(d){const Dd=G.dial;Dd.val=(Dd.val+d+10)%10;Dd.ang+=d*36;drawDial()}
+function driftDial(){
+  if(!G||G.over||G.solved.has('dial'))return;const Dd=G.dial;
+  if(Dd.val!==Dd.home){const fwd=(Dd.home-Dd.val+10)%10;turnDial(fwd<=5?1:-1);beep(240,.03,'square',.03)}
+  gl(Dd.drift,driftDial);
+}
+$('#m-dial').addEventListener('click',e=>{
+  const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial'))return;
+  const d=+b.dataset.d;
+  if(d){turnDial(d);beep(500+G.dial.val*30,.03,'square',.04);return}
+  if(G.dial.val===G.dial.target){beep(1000,.06);solve('dial')}else strike('dial');
+});
+
 /* ---------- final lock: unscrew the plate, read the code, type it in ---------- */
-function drawEntry(){const d=$('#vdisp');d.className='vdisp';d.textContent=(G.entry+'····').slice(0,4)}
+function drawEntry(){const d=$('#vdisp');d.className='vdisp';d.textContent=(G.entry+'·'.repeat(G.code.length)).slice(0,G.code.length);d.classList.toggle('long',G.code.length>4)}
 function openCover(){
   if(G.over)return;G.stage='final';
   const mods=$('.mods');mods.classList.add('lift');
@@ -756,20 +933,21 @@ function openCover(){
 function showCode(){
   const c=$('#codeShow'),m=G.lvl.final&&G.lvl.final.memo;c.textContent=G.code;c.classList.remove('gone');
   $('#c-final').textContent=m?'MEMORISE · ENTER CODE':'ENTER THE CODE';
-  if(m)gl(m,()=>{c.textContent='????';c.classList.add('gone')});
+  if(m)gl(m,()=>{c.textContent='?'.repeat(G.code.length);c.classList.add('gone')});
 }
 function pressPin(k){
   if(!G||G.over||G.stage!=='final'||G.busy)return;
-  const d=$('#vdisp');
+  const d=$('#vdisp'),n=G.code.length;
   if(k==='C'){G.entry='';drawEntry();beep(300,.04);return}
   if(k==='B'){G.entry=G.entry.slice(0,-1);drawEntry();beep(300,.04);return}
-  if(k!=='E'){if(G.entry.length<4){G.entry+=k;drawEntry();beep(700+ +k*40,.05)}return}
+  if(k!=='E'){if(G.entry.length<n){G.entry+=k;drawEntry();beep(700+ +k*40,.05)}return}
   if(G.entry===G.code){
     d.textContent='SAFE';d.className='vdisp ok';$('#m-final').classList.add('done');$('#c-final').textContent=DONE;
     [784,988,1175].forEach((f,i)=>setTimeout(()=>beep(f,.15,'sine',.08),i*100));
     defused();
   }else{
     G.busy=true;d.textContent='ERR';d.className='vdisp err';strike();
+    if(G.over)return;
     if(G.screws>=4)showCode();
     setTimeout(()=>{G.busy=false;G.entry='';if(G.stage==='final')drawEntry()},800);
   }
