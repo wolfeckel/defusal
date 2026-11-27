@@ -252,8 +252,12 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .pad.bad{animation:bad .4s}
 /* mute + leaderboard */
 .topbar{position:fixed;top:10px;left:0;right:0;max-width:544px;margin:0 auto;padding:0 12px;z-index:45;display:flex;gap:8px;pointer-events:none}
-.topbar .sp{flex:1}.topbar .ib{pointer-events:auto}.topbar .ib[hidden]{display:none}
-.hud{min-height:46px}.hud h1{padding-left:56px}
+.topbar .sp{flex:1;min-width:0;display:flex;justify-content:center;align-items:center}.topbar .ib{pointer-events:auto}.topbar .ib[hidden]{display:none}
+.me{pointer-events:auto;max-width:100%;min-height:40px;padding:0 14px;border:0;border-radius:999px;background:var(--case);color:#eef0f2;box-shadow:0 4px 0 #15181b;cursor:pointer;
+  font:700 17px "Barlow Condensed",sans-serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me[hidden]{display:none}.me:active{transform:translateY(3px);box-shadow:0 1px 0 #15181b}.me:focus-visible{outline:3px solid #fff}
+.me small{color:#9aa2a9;font-weight:400;margin-left:4px}
+.hud{min-height:46px}.hud h1{padding-left:110px}
 .over{padding-top:72px}
 .board{list-style:none;margin:0 0 18px;padding:0;text-align:left;display:flex;flex-direction:column;gap:6px}
 .board[hidden]{display:none}
@@ -352,7 +356,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
+<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -934,7 +938,7 @@ function showOver(m,why){
   let top='',title='',text='',chips='',go='',link='';
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
-    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+'<button class="cta dly" id="dly">📅 Daily bomb</button>';title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;link='Change name';drawLvls()}
+    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+'<button class="cta dly" id="dly">📅 Daily bomb</button>';title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
     chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'')
       +(L.chain?chip('🔗 IN ORDER'):'')+(L.shuffle?chip('🔀 SHUFFLE'):'')+(L.decoy?chip('🎭 DECOY'):'');go='PLAY'}
@@ -984,6 +988,8 @@ function drawTop(){
   $('#back').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
   $('#trophy').hidden=playing()||!lbOn()||mode==='board';
   $('#restart').hidden=!playing();
+  const me=$('#me');me.hidden=playing()||mode==='name'||!S.current;
+  if(!me.hidden){me.innerHTML=`👤 ${esc(S.current)}<small>✎</small>`;me.setAttribute('aria-label',`Playing as ${S.current}. Change name`)}
 }
 function goBack(){
   const reBrief=()=>daily?openDaily():toBrief(lvl);
@@ -993,6 +999,7 @@ function goBack(){
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
 // ↻ mid-level: throw this attempt away and start the same level again
+$('#me').onclick=()=>{audioOn();SFX.click(1400);showOver('name')};
 $('#restart').onclick=()=>{audioOn();SFX.click(1200);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}start()};
 $('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab='all';showOver('board')};
 
