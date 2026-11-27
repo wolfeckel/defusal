@@ -38,6 +38,15 @@ alter table public.scores drop constraint if exists scores_stars_check;
 alter table public.scores add  constraint scores_stars_check  check (stars between 0 and 450);
 alter table public.scores enable row level security;   -- no policies: no direct reads or writes
 
+-- a player's name, as the database knows it. Names change only through rename_player; scores, times and
+-- saves sent by a device never overwrite a name that's already stored (new players use the name they send).
+create or replace function public.player_name(p_id uuid, p_name text)
+returns text language sql stable security definer set search_path = public as $$
+  select coalesce((select p.name from players p where p.player_id = p_id),
+                  (select s.name from scores s where s.player_id = p_id),
+                  left(trim(p_name), 20));
+$$;
+
 -- save a player's totals; levels and stars only ever go up.
 -- total_ms is the sum of the player's best time on every level they've cleared (mistakes included)
 create or replace function public.submit_score(p_id uuid, p_name text, p_levels int, p_stars int, p_total_ms bigint)
@@ -48,9 +57,9 @@ begin
     raise exception 'invalid score';
   end if;
   insert into scores (player_id, name, levels, stars, total_ms)
-  values (p_id, left(trim(p_name), 20), p_levels, p_stars, p_total_ms)
+  values (p_id, public.player_name(p_id, p_name), p_levels, p_stars, p_total_ms)
   on conflict (player_id) do update set
-    name       = excluded.name,
+    name       = scores.name,                 -- names change only through rename_player
     levels     = greatest(scores.levels, excluded.levels),
     stars      = greatest(scores.stars,  excluded.stars),
     -- take the new total only when it comes with at least as much progress
@@ -68,9 +77,9 @@ begin
     raise exception 'invalid score';
   end if;
   insert into scores (player_id, name, levels, stars)
-  values (p_id, left(trim(p_name), 20), p_levels, p_stars)
+  values (p_id, public.player_name(p_id, p_name), p_levels, p_stars)
   on conflict (player_id) do update set
-    name       = excluded.name,
+    name       = scores.name,                 -- names change only through rename_player
     levels     = greatest(scores.levels, excluded.levels),
     stars      = greatest(scores.stars,  excluded.stars),
     updated_at = case when excluded.levels > scores.levels or excluded.stars > scores.stars
@@ -122,9 +131,9 @@ begin
     raise exception 'invalid time';
   end if;
   insert into level_times (player_id, level, name, ms)
-  values (p_id, p_level, left(trim(p_name), 20), p_ms)
+  values (p_id, p_level, public.player_name(p_id, p_name), p_ms)
   on conflict (player_id, level) do update set
-    name   = excluded.name,
+    name   = level_times.name,
     ms     = least(level_times.ms, excluded.ms),
     set_at = case when excluded.ms < level_times.ms then now() else level_times.set_at end;
 end $$;
@@ -169,9 +178,9 @@ begin
     raise exception 'invalid daily time';
   end if;
   insert into daily_times (player_id, day, name, ms)
-  values (p_id, p_day, left(trim(p_name), 20), p_ms)
+  values (p_id, p_day, public.player_name(p_id, p_name), p_ms)
   on conflict (player_id, day) do update set
-    name   = excluded.name,
+    name   = daily_times.name,
     ms     = least(daily_times.ms, excluded.ms),
     set_at = case when excluded.ms < daily_times.ms then now() else daily_times.set_at end;
 end $$;
@@ -233,20 +242,34 @@ begin
       raise exception 'pin taken';
     end if;
     insert into players (player_id, name, pin, progress)
-    values (p_id, left(trim(p_name), 20), p_pin, merge_progress('{}'::jsonb, p_progress));
+    values (p_id, public.player_name(p_id, p_name), p_pin, merge_progress('{}'::jsonb, p_progress));
   elsif cur.pin <> p_pin then
     raise exception 'wrong pin';
   else
-    update players set name = left(trim(p_name), 20), progress = merge_progress(cur.progress, p_progress), updated_at = now()
+    update players set progress = merge_progress(cur.progress, p_progress), updated_at = now()
     where player_id = p_id;
   end if;
 end $$;
 
--- read a player's saved progress (needs their code)
+-- read a player's saved progress (needs their code); "_name" tells the device its current name
 create or replace function public.load_progress(p_id uuid, p_pin text)
 returns jsonb language sql stable security definer set search_path = public as $$
-  select p.progress from players p where p.player_id = p_id and p.pin = p_pin;
+  select p.progress || jsonb_build_object('_name', p.name) from players p where p.player_id = p_id and p.pin = p_pin;
 $$;
+
+-- rename a player everywhere (needs their code); a name another player uses is refused
+create or replace function public.rename_player(p_id uuid, p_pin text, p_name text)
+returns void language plpgsql security definer set search_path = public as $$
+declare n text := left(trim(p_name), 20);
+begin
+  if char_length(n) < 1 then raise exception 'invalid name'; end if;
+  if not exists (select 1 from players where player_id = p_id and pin = p_pin) then raise exception 'wrong pin'; end if;
+  if exists (select 1 from players where lower(name) = lower(n) and player_id <> p_id) then raise exception 'name taken'; end if;
+  update players     set name = n, updated_at = now() where player_id = p_id;
+  update scores      set name = n where player_id = p_id;
+  update level_times set name = n where player_id = p_id;
+  update daily_times set name = n where player_id = p_id;
+end $$;
 
 -- play as an existing player on this device: name + code. The device's own old ID (if any) is linked,
 -- so its separate leaderboard rows stop showing; they are kept, not deleted.
@@ -271,8 +294,8 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- ── Access: the public key may call these functions and nothing else ─────────
-revoke all on function public.name_taken(text) from public;
-grant execute on function public.name_taken(text) to anon, authenticated;
+revoke all on function public.name_taken(text), public.rename_player(uuid, text, text), public.player_name(uuid, text) from public;
+grant execute on function public.name_taken(text), public.rename_player(uuid, text, text) to anon, authenticated;
 revoke all on function
   public.submit_score(uuid, text, int, int, bigint), public.submit_score(uuid, text, int, int),
   public.top_scores(int), public.my_rank(uuid),

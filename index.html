@@ -878,7 +878,9 @@ function syncSave(){
   if(!lbOn()||!S.current)return Promise.resolve();
   const P=prof();if(!P.pin){P.pin=newPin();save()}
   const id=pid(),up=()=>lbCall('save_progress',{p_id:id,p_name:S.current,p_pin:P.pin,p_progress:{best:P.best,unlocked:P.unlocked}});
-  return lbCall('load_progress',{p_id:id,p_pin:P.pin}).then(prog=>{if(prog){mergeInto(P,prog);save()}return up()})
+  return lbCall('load_progress',{p_id:id,p_pin:P.pin}).then(prog=>{
+      if(prog){if(prog._name&&prog._name!==S.current)adoptName(prog._name);mergeInto(P,prog);save()}   // a rename done in the database reaches this device
+      return lbCall('save_progress',{p_id:id,p_name:S.current,p_pin:P.pin,p_progress:{best:P.best,unlocked:P.unlocked}})})
     .catch(e=>{if(e.message==='pin taken'){P.pin=newPin();save();return up().catch(()=>{})}});   // someone with this name has that code
 }
 // play as an existing player on this device: name + code
@@ -1072,13 +1074,20 @@ function nameSubmit(asNew){
       if(taken){msg(`“${v}” is already playing. Enter that player’s 4-digit code, or pick another name.`);$('#pin').focus();return}
       proceed()}).catch(()=>{g.disabled=false;proceed()});
 }
-// rename the current player: same ID, progress and code; the leaderboard, level times and today's daily
-// time are re-sent so every board shows the new name (the server keeps each best and takes the new name)
+// rename the current player: the database renames them everywhere (same ID, progress and code), then this
+// device follows. Needs the internet; the database is in charge of names.
 function renameMe(v){
-  const old=S.current,P=S.players[old];S.players[v]=P;delete S.players[old];S.current=v;
-  P.pend={...(P.pend||{})};for(const [i,b] of Object.entries(P.best||{}))if(b.ms)P.pend[i]=b.ms;
-  if(P.daily&&P.daily.day===todayKey())P.dpend={...P.daily};
-  save();submitScore();submitTimes();submitDaily();syncSave();showOver('map');
+  const msg=t=>{$('#oText').textContent=t};
+  if(!lbOn()){msg('Renaming needs the online leaderboard.');return}
+  const g=$('#go');g.disabled=true;msg('Renaming…');
+  syncSave().then(()=>lbCall('rename_player',{p_id:pid(),p_pin:prof().pin,p_name:v}))
+    .then(()=>{g.disabled=false;adoptName(v);showOver('map')})
+    .catch(e=>{g.disabled=false;msg(e.message==='name taken'?`“${v}” is already playing. Pick another name.`:'Couldn’t rename right now. Check your connection and try again.')});
+}
+// this device's player now goes by a different name (renamed here, or in the database): move the local save over
+function adoptName(n){
+  const old=S.current,P=S.players[old];if(!P||n===old||(S.players[n]&&S.players[n]!==P))return;
+  S.players[n]=P;delete S.players[old];S.current=n;save();drawTop();
 }
 let boardTimer=0;
 let titleT=0;
