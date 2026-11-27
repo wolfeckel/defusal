@@ -336,7 +336,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="mod" id="m-pulse"><span class="led"></span><div class="clue" id="c-pulse" aria-live="polite"></div><div class="pads" id="pads"></div></div>
     <div class="mod" id="m-switches"><span class="led"></span><div class="clue" id="c-switches" aria-live="polite"></div><div class="sws" id="sws"></div></div>
     <div class="mod" id="m-dial"><span class="led"></span><div class="clue" id="c-dial" aria-live="polite"></div>
-      <div class="dialw"><div class="dial" id="dial"></div><div class="drow one"><button class="dbtn lock" data-d="0">SET</button></div></div></div>
+      <div class="dialw"><div class="dial" id="dial"></div><div class="drow"><button class="dbtn" data-d="-1" aria-label="Move hand anticlockwise">◀</button><button class="dbtn lock" data-d="0">SET</button><button class="dbtn" data-d="1" aria-label="Move hand clockwise">▶</button></div></div></div>
     <div class="mod" id="m-slider"><span class="led"></span><div class="clue" id="c-slider" aria-live="polite"></div><div class="sliders" id="sliders"></div></div>
     <div class="mod decoy" id="m-decoy" hidden><span class="led"></span><div class="clue" id="c-decoy"></div><div class="decoyw"><button class="big" id="dbig" aria-label="Decoy button">PUSH</button></div></div>
   </div>
@@ -1215,7 +1215,7 @@ function start(){
   newGame();$('#over').hidden=true;drawTop();lastTick=-1;resetFX();scrollTo(0,0);
   const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
-  if(G.active.includes('dial'))gl(G.dial.tick,marchDial);
+  if(G.active.includes('dial'))marchDial();
   if(G.active.includes('slider')&&G.sl.move)gl(G.sl.move,moveSlider);
   if(G.decoy&&!G.decoy.revealed)gl(G.decoy.late,()=>{if(G.over)return;G.decoy.revealed=true;drawDecoy();beep(260,.1,'square',.05)});
   if(G.chain){G.chainHid=false;drawChain()}
@@ -1293,13 +1293,19 @@ $('#sws').onclick=e=>{
 };
 
 /* ---------- dial: the hand marches steadily; press SET when it's on the right number ---------- */
-function marchDial(){
-  if(!G||G.over||G.solved.has('dial'))return;const Dd=G.dial;
-  Dd.val=(Dd.val+Dd.dir+10)%10;Dd.ang+=Dd.dir*36;drawDial();SFX.ratchet(.08);
-  gl(Dd.tick,marchDial);
+function stepDial(d){const Dd=G.dial;Dd.val=(Dd.val+d+10)%10;Dd.ang+=d*36;drawDial()}
+// the hand keeps ticking on its own; ◀ ▶ move it by hand, which pauses the ticking for a moment
+function marchDial(delay){
+  const Dd=G&&G.dial;if(!Dd)return;clearTimeout(Dd.tm);
+  Dd.tm=setTimeout(function tick(){
+    if(!G||G.over||G.solved.has('dial'))return;
+    stepDial(Dd.dir);SFX.ratchet(.08);Dd.tm=setTimeout(tick,Dd.tick);GT.push(Dd.tm);
+  },delay??Dd.tick);GT.push(Dd.tm);
 }
 $('#m-dial').addEventListener('click',e=>{
   const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial')||!allowed('dial'))return;touch('dial');
+  const d=+b.dataset.d;
+  if(d){stepDial(d);SFX.ratchet();if(playing())marchDial(Math.max(1200,G.dial.tick*2));return}
   if(G.dial.val===G.dial.want){SFX.thunk();solve('dial')}else strike('dial');
 });
 
