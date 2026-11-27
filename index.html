@@ -1047,9 +1047,14 @@ $('#go').onclick=()=>{
       claimPlayer(v,code).then(()=>{g.disabled=false;$('#pin').value='';if(changing)showOver('map');else toBrief(Math.min(prof().unlocked,LEVELS.length-1))})
         .catch(e=>{g.disabled=false;$('#oText').textContent=e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.'});
       return}
-    S.current=v;const P=prof();save();syncSave();
-    if(changing){showOver('map');return}
-    toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
+    const proceed=()=>{S.current=v;const P=prof();save();syncSave();if(changing)showOver('map');else toBrief(Math.min(P.unlocked,LEVELS.length-1))};
+    // a name someone else already plays under needs their code (names saved on this device are fine; offline lets you through)
+    if(S.players[v]||!lbOn()){proceed();return}
+    const g=$('#go');g.disabled=true;
+    lbCall('name_taken',{p_name:v}).then(taken=>{g.disabled=false;
+      if(taken){$('#oText').textContent=`“${v}” is already playing. Enter that player’s 4-digit code, or pick another name.`;$('#pin').focus();return}
+      proceed()}).catch(()=>{g.disabled=false;proceed()});
+    return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='title'){if(S.current)toBrief(Math.min(prof().unlocked,LEVELS.length-1));else showOver('name');return}
   if(mode==='board'){goBack();return}

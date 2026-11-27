@@ -264,7 +264,15 @@ begin
   return query select r.player_id, r.progress;
 end $$;
 
+-- is this name already used by a player with an online save? (the game then asks for that player's code)
+create or replace function public.name_taken(p_name text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)));
+$$;
+
 -- ── Access: the public key may call these functions and nothing else ─────────
+revoke all on function public.name_taken(text) from public;
+grant execute on function public.name_taken(text) to anon, authenticated;
 revoke all on function
   public.submit_score(uuid, text, int, int, bigint), public.submit_score(uuid, text, int, int),
   public.top_scores(int), public.my_rank(uuid),
