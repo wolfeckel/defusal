@@ -298,7 +298,45 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)) and p.player_id is distinct from p_id);
 $$;
 
+-- log in by name: your name is your player. Finds the player with that name (most progress wins), builds an
+-- online save from the leaderboard if they never had one, and links this device's own player for that name
+-- (e.g. an empty one made by mistake) to it. Nothing is deleted. Returns no rows for a brand-new name.
+create or replace function public.login_player(p_name text, p_old_id uuid default null)
+returns table (out_id uuid, out_pin text, out_progress jsonb)
+language plpgsql security definer set search_path = public as $$
+declare sid uuid; r public.players; n text := lower(trim(p_name));
+begin
+  with c as (
+    select p.player_id from players p where lower(p.name) = n
+    union select s.player_id from scores s where lower(s.name) = n)
+  select c.player_id into sid
+  from c left join scores s on s.player_id = c.player_id left join players p on p.player_id = c.player_id
+  where c.player_id not in (select old_id from player_links)
+  order by greatest(coalesce(s.levels, 0), coalesce((p.progress->>'unlocked')::int, 0)) desc,
+           coalesce(s.stars, 0) desc, coalesce(p.updated_at, s.updated_at) desc nulls last
+  limit 1;
+  if sid is null then return; end if;
+  -- an old player with no online save yet: build one from their leaderboard times (all reached levels unlocked)
+  insert into players (player_id, name, pin, progress)
+  select s.player_id, s.name, lpad(floor(random() * 10000)::int::text, 4, '0'),
+    jsonb_build_object(
+      'unlocked', least(149, coalesce((select max(t.level) from level_times t where t.player_id = s.player_id), s.levels)),
+      'best', coalesce((select jsonb_object_agg((t.level - 1)::text, jsonb_build_object('s', 1, 'ms', t.ms))
+                        from level_times t where t.player_id = s.player_id), '{}'::jsonb))
+  from scores s where s.player_id = sid
+  on conflict (player_id) do nothing;
+  select * into r from players where player_id = sid;
+  if not found then return; end if;
+  if p_old_id is not null and p_old_id <> sid then
+    insert into player_links (old_id, new_id) values (p_old_id, sid)
+    on conflict (old_id) do update set new_id = excluded.new_id, linked_at = now();
+  end if;
+  return query select r.player_id, r.pin, r.progress || jsonb_build_object('_name', r.name);
+end $$;
+
 -- ── Access: the public key may call these functions and nothing else ─────────
+revoke all on function public.login_player(text, uuid) from public;
+grant execute on function public.login_player(text, uuid) to anon, authenticated;
 revoke all on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text), public.player_name(uuid, text) from public;
 grant execute on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text) to anon, authenticated;
 revoke all on function

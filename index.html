@@ -385,7 +385,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <p id="oText"></p>
     <div class="chips" id="chips"></div>
     <div class="chips" id="ranks" aria-live="polite"></div>
-    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"><input class="name pin" id="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="4-digit code" aria-label="That player's 4-digit code" hidden></div>
+    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
     <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button><button role="tab" data-t="daily">Daily</button></div>
     <div class="lvpick" id="lvpick" hidden><button class="ib" data-d="-1" aria-label="Previous level">◀</button><span id="lvpickT">Level 1</span><button class="ib" data-d="1" aria-label="Next level">▶</button></div>
@@ -883,17 +883,10 @@ function syncSave(){
       return lbCall('save_progress',{p_id:id,p_name:S.current,p_pin:P.pin,p_progress:{best:P.best,unlocked:P.unlocked}})})
     .catch(e=>{
       if(e.message==='pin taken'){P.pin=newPin();save();return up().catch(()=>{})}   // someone with this name has that code
-      if(e.message==='wrong pin'&&!P.pinBad){P.pinBad=true;save();if(mode==='title')showOver('title')}   // the code was changed in the database
+      // the save's internal key changed in the database: fetch it again by name (same player) and retry
+      if(e.message==='wrong pin')return lbCall('login_player',{p_name:S.current,p_old_id:id}).then(r=>{
+        const m=r&&r[0];if(m&&m.out_id===id){P.pin=m.out_pin;save();return up()}}).catch(()=>{});
     });
-}
-// play as an existing player on this device: name + code
-function claimPlayer(name,code){
-  const old=S.players[name]&&S.players[name].id;
-  return lbCall('claim_player',{p_name:name,p_pin:code,p_old_id:old||null}).then(r=>{
-    const m=r&&r[0];if(!m)throw new Error('no match');
-    S.current=name;const P=prof();P.id=m.out_id;P.pin=code;delete P.pinBad;mergeInto(P,m.out_progress);save();
-    return syncSave().then(()=>submitScore());
-  });
 }
 // 12.4s, or 1:02.4 past a minute
 const fmtMs=ms=>{const s=ms/1000;return s<60?s.toFixed(1)+'s':Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0')};
@@ -1002,18 +995,14 @@ function drawLvls(){
 // screens: name · map · brief · win · lose
 function showOver(m,why){
   if(m==='map')daily=false;
-  if(m!=='name')renaming=false;
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
-    text=S.current&&prof().pinBad?'Your code has changed. Tap your name at the top and enter it to keep your progress saved.':'Cut the wires. Beat the clock.';go='▶ PLAY';
+    text='Cut the wires. Beat the clock.';go='▶ PLAY';link=S.current?'Change name':'';
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
-  // name screen: a name and PLAY (the code box only appears once a name clash is confirmed).
-  // "Change name" switches it to renaming the current player: New name → SAVE, or Cancel.
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';$('#pin').value='';$('#pin').hidden=true;
-    if(renaming){title='Change name';go='SAVE';link='Cancel';$('#name').value='';$('#name').placeholder='New name'}
-    else{go='PLAY';link=S.current?'Change name':'';$('#name').value=S.current;$('#name').placeholder='Your name'}}
+  // name screen: just your name and PLAY
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value='';}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
@@ -1047,7 +1036,7 @@ $('#oTop').onclick=e=>{
 };
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
-  if(mode==='name'){if(renaming)renameMe();else nameSubmit();return}
+  if(mode==='name'){nameSubmit();return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='title'){if(S.current)toBrief(Math.min(prof().unlocked,LEVELS.length-1));else showOver('name');return}
   if(mode==='board'){goBack();return}
@@ -1055,44 +1044,24 @@ $('#go').onclick=()=>{
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
-// name screen: type a name and PLAY.
-//  · your name, or a name already played on this device → play as them
-//  · a new name with a code → play as that existing player from another device
-//  · a new name someone already plays under → asked for their code
-//  · otherwise → a new player
+// name screen: your name is your player. Type it and PLAY to carry on from where you left off, on any device.
+// The database finds the player with that name (most progress wins) and this device takes on their save.
 function nameSubmit(){
-  const v=$('#name').value.trim().slice(0,20),code=$('#pin').value.trim(),msg=t=>{$('#oText').textContent=t};
-  if(!v){$('#name').focus();return}
+  const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
   const go=()=>toBrief(Math.min(prof().unlocked,LEVELS.length-1)),g=$('#go');
-  // a save on this device counts as "you" only if it has progress and its code still matches the database
-  const mine=S.players[v],trusted=mine&&!mine.pinBad&&Object.keys(mine.best||{}).length>0;
-  if(trusted&&!code){S.current=v;save();syncSave();go();return}
-  if(code){
-    if(!/^[0-9]{4}$/.test(code)){msg('The code is 4 digits.');return}
-    if(!lbOn()){msg('Codes need the online leaderboard.');return}
-    g.disabled=true;msg('Checking…');
-    claimPlayer(v,code).then(()=>{g.disabled=false;go()})
-      .catch(e=>{g.disabled=false;msg(e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.')});
-    return}
-  const fresh=()=>{S.current=v;prof();save();syncSave();go()};   // (also reuses an empty save of that name on this device)
-  if(!lbOn()){fresh();return}                      // offline: no check
-  g.disabled=true;
-  lbCall('name_taken',{p_name:v,p_id:(mine&&mine.id)||null}).then(taken=>{g.disabled=false;
-    if(taken){$('#pin').hidden=false;msg(`“${v}” is already playing. If that’s you, enter your 4-digit code.`);$('#pin').focus();return}
-    fresh()}).catch(()=>{g.disabled=false;fresh()});
+  const local=()=>{S.current=v;prof();save();syncSave();go()};          // a new name, or offline
+  if(!lbOn()){local();return}
+  g.disabled=true;$('#oText').textContent='Loading…';
+  loginByName(v).then(found=>{g.disabled=false;if(found)go();else local()}).catch(()=>{g.disabled=false;local()});
 }
-// Change name: rename the current player everywhere through the database (same player, progress and code)
-let renaming=false;
-function renameMe(){
-  const v=$('#name').value.trim().slice(0,20),msg=t=>{$('#oText').textContent=t};
-  if(!v){$('#name').focus();return}
-  if(v===S.current){renaming=false;showOver('name');return}
-  if(S.players[v]){msg(`“${v}” is already a player on this device.`);return}
-  if(!lbOn()){msg('Changing your name needs the internet.');return}
-  const g=$('#go');g.disabled=true;msg('Saving…');
-  syncSave().then(()=>lbCall('rename_player',{p_id:pid(),p_pin:prof().pin,p_name:v}))
-    .then(()=>{g.disabled=false;adoptName(v);renaming=false;showOver('name')})
-    .catch(e=>{g.disabled=false;msg(e.message==='name taken'?`“${v}” is already playing. Pick another name.`:'Couldn’t change your name right now. Try again.')});
+// take on the database's player for this name (if there is one); resolves true when found
+function loginByName(v){
+  const mine=S.players[v];
+  return lbCall('login_player',{p_name:v,p_old_id:(mine&&mine.id)||null}).then(r=>{
+    const m=r&&r[0];if(!m)return false;
+    S.current=v;const P=prof();P.id=m.out_id;P.pin=m.out_pin;delete P.pinBad;mergeInto(P,m.out_progress);save();
+    syncSave().then(()=>submitScore());return true;
+  });
 }
 // this device's player now goes by a different name (renamed in the database): move the local save over
 function adoptName(n){
@@ -1103,10 +1072,8 @@ function adoptName(n){
 let boardTimer=0;
 let titleT=0;
 $('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
-$('#who').onclick=()=>{if(mode==='name'){renaming=!renaming;showOver('name');$('#name').focus();return}showOver(mode==='map'?'name':'map')};
+$('#who').onclick=()=>{audioOn();SFX.click(1400);showOver('name');$('#name').focus()};   // "Change name" under PLAY on the title
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
-$('#name').oninput=()=>{$('#pin').hidden=true;$('#pin').value=''};   // a different name: the code box goes until a new clash is found
-$('#pin').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
 // ☰ during play: abandon the level and go to the map
 /* ---------- top bar: ← back · 🏆 leaderboard · 🔊 mute ---------- */
