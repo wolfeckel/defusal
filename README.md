@@ -22,7 +22,9 @@ The leaderboard stays hidden until it's connected:
 3. Open **Project Settings → API** and copy the **Project URL** and the **publishable** (or `anon` public) key.
 4. Put them in `index.html` where it says `const LB={url:'',key:''};`.
 
-The key is meant to be public: it can only call the three functions in the SQL file, which validate scores and never lower them. Players can't read or edit the scores table directly. Free Supabase projects pause after a week without visits; open the dashboard to wake one up.
+The leaderboard has two tabs: **Overall** (levels cleared, then stars, then total time) and **Fastest** (each level's best times; mistakes add their penalty to the time). The SQL file is safe to run again after updates: it keeps existing scores and only adds what's missing.
+
+The key is meant to be public: it can only call the functions in the SQL file, which validate scores and only ever keep a player's best. Players can't read or edit the tables directly. Free Supabase projects pause after a week without visits; open the dashboard to wake one up.
 
 ## History
 

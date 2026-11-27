@@ -259,6 +259,18 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .board .lvn,.board .st{text-align:right}.board .lvn{font:17px "Share Tech Mono",monospace;color:#b8ffd0}.board .st{font:17px "Share Tech Mono",monospace;color:#f2c230}
 .board li.me{outline:2px solid #f2c230;background:rgba(242,194,48,.12)}
 .board li.msg,.board li.gap{display:block;text-align:center;background:none;color:#c6cbd0;font-weight:400}
+/* speed: tabs, level picker, time rows */
+.btabs{display:flex;gap:6px;justify-content:center;margin:0 0 12px}
+.btabs[hidden],.lvpick[hidden]{display:none}
+.btabs button{flex:1;max-width:170px;min-height:46px;border:0;border-radius:12px;background:#2a2f34;color:#eef0f2;font:800 19px "Barlow Condensed",sans-serif;letter-spacing:.06em;cursor:pointer}
+.btabs button[aria-selected=true]{background:#f2c230;color:#161616}
+.btabs button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.lvpick{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 12px;font:22px "Share Tech Mono",monospace;color:#fff}
+.board li.fast{grid-template-columns:38px minmax(0,1fr) 92px}
+.board .tm{text-align:right;font:20px "Share Tech Mono",monospace;color:#b8ffd0}
+.board .nm small{display:block;font:13px "Share Tech Mono",monospace;color:#9aa2a9}
+.chip.rec{background:#3a2f0a;color:#f2c230}
+.chip.xl{font-size:28px;padding:10px 18px}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -314,6 +326,8 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="chips" id="chips"></div>
     <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
+    <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button></div>
+    <div class="lvpick" id="lvpick" hidden><button class="ib" data-d="-1" aria-label="Previous level">◀</button><span id="lvpickT">Level 1</span><button class="ib" data-d="1" aria-label="Next level">▶</button></div>
     <ol class="board" id="board" aria-label="Leaderboard" hidden></ol>
     <div class="row"><button class="cta" id="go">PLAY</button><button class="cta alt" id="alt" hidden>↻ Replay</button></div>
     <button class="link" id="who" hidden></button>
@@ -619,11 +633,17 @@ function defused(){
 function end(win,why){
   G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);
   if(win){
-    const left=Math.ceil(G.left/1000),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
-    G.result={stars,beat:!!b&&(stars>b.s||(stars===b.s&&left>b.t))};
-    if(!b||G.result.beat)P.best[lvl]={s:stars,t:left};
+    const left=Math.ceil(G.left/1000),ms=Math.max(1000,Math.round(G.lvl.time*1000-G.left)),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
+    const betterStars=!!b&&(stars>b.s||(stars===b.s&&left>b.t)),pb=!b||!b.ms||ms<b.ms,nb=b?{...b}:{s:stars,t:left};
+    if(betterStars){nb.s=stars;nb.t=left}
+    if(pb){nb.ms=ms;(P.pend=P.pend||{})[lvl]=ms}
+    P.best[lvl]=nb;const res=G.result={stars,ms,beat:betterStars||(pb&&!!(b&&b.ms))};
     P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();submitScore();
     showOver('win');celebrate();
+    // a new personal best might be the fastest anyone has done this level
+    if(pb&&lbOn()){const i=lvl;submitTimes().then(()=>lbCall('top_times',{p_level:i+1,n:1})).then(t=>{
+      if(mode==='win'&&G.result===res&&t&&t[0]&&t[0].ms===ms&&t[0].name===S.current.trim().slice(0,20)){
+        $('#chips').insertAdjacentHTML('beforeend',chip('🏆 NEW RECORD!','hot'));[1046,1318,1568,2093].forEach((f,k)=>setTimeout(()=>beep(f,.14,'triangle',.07),k*90))}}).catch(()=>{})}
     [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120));
     for(let i=0;i<stars;i++)setTimeout(()=>beep(1046+i*260,.12,'triangle',.07),650+i*250);
   }
@@ -631,36 +651,67 @@ function end(win,why){
 }
 
 /* ---------- online leaderboard (Supabase) ---------- */
-// Fill these in from Supabase → Project Settings → API. Both are safe to publish: the key can only call the
-// three functions in supabase/leaderboard.sql, never read or edit the scores table directly.
+// Both values are safe to publish: the key can only call the functions in supabase/leaderboard.sql,
+// never read or edit the tables directly.
 const LB={url:'https://uhkkzzfbcchhcalmucwh.supabase.co',key:'sb_publishable_jgTVMc_t4Iq3CPqx8-3tpA_XjXtqG4C'};
 const lbOn=()=>!!(LB.url&&LB.key);
 function lbCall(fn,body){
   const h={apikey:LB.key,'Content-Type':'application/json'};if(LB.key.startsWith('eyJ'))h.Authorization='Bearer '+LB.key;
   return fetch(`${LB.url}/rest/v1/rpc/${fn}`,{method:'POST',headers:h,body:JSON.stringify(body)}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.status===204?null:r.json()});
 }
-const totals=P=>({levels:Object.keys(P.best).length,stars:Object.values(P.best).reduce((a,b)=>a+b.s,0)});
+// 12.4s, or 1:02.4 past a minute
+const fmtMs=ms=>{const s=ms/1000;return s<60?s.toFixed(1)+'s':Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0')};
+// levels cleared, stars, and total of best times (a level cleared before times existed counts as its full time limit)
+const totals=P=>{const b=Object.entries(P.best);return{levels:b.length,stars:b.reduce((a,[,x])=>a+x.s,0),ms:b.reduce((a,[i,x])=>a+(x.ms||LEVELS[i].time*1000),0)}};
 const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)});
 function pid(){const P=prof();if(!P.id){P.id=uuid();save()}return P.id}
-// send this player's totals (the server only ever keeps the higher numbers)
+// send this player's totals (the server only ever keeps the better numbers)
 function submitScore(){
   if(!lbOn()||!S.current)return;const t=totals(prof());if(!t.levels)return;
-  lbCall('submit_score',{p_id:pid(),p_name:S.current,p_levels:t.levels,p_stars:t.stars}).catch(()=>{});
+  lbCall('submit_score',{p_id:pid(),p_name:S.current,p_levels:t.levels,p_stars:t.stars,p_total_ms:Math.round(t.ms)}).catch(()=>{});
+}
+// personal-best times wait in P.pend until the server has them, so a time set offline is sent later
+function submitTimes(){
+  if(!lbOn()||!S.current)return Promise.resolve();const P=prof(),pend=P.pend||{};
+  return Promise.all(Object.entries(pend).map(([i,ms])=>lbCall('submit_time',{p_id:pid(),p_name:S.current,p_level:+i+1,p_ms:ms})
+    .then(()=>{if(P.pend&&P.pend[i]===ms){delete P.pend[i];save()}}).catch(()=>{})));
 }
 const ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>ESC[c]);
 const MEDAL=['🥇','🥈','🥉'];
+// leaderboard screen: Overall (levels → stars → total time) or Fastest (one level's best times)
+let boardTab='all',boardLvl=0,boardSeq=0;
 async function drawBoard(){
-  const b=$('#board');b.innerHTML='<li class="msg">Loading…</li>';
+  const seq=++boardSeq,tab=boardTab,b=$('#board'),stale=()=>mode!=='board'||seq!==boardSeq,gap='<li class="gap">⋯</li>';
+  document.querySelectorAll('#btabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===tab));
+  $('#lvpick').hidden=tab!=='fast';$('#lvpickT').textContent=`Level ${boardLvl+1}`;
+  b.innerHTML='<li class="msg">Loading…</li>';
   try{
-    const [top,me]=await Promise.all([lbCall('top_scores',{n:50}),S.current?lbCall('my_rank',{p_id:pid()}):null]);
-    if(mode!=='board')return;
-    const row=(pos,name,lv,st,mine)=>`<li class="${mine?'me':''}"><b>${MEDAL[pos-1]||pos}</b><span class="nm">${esc(name)}</span><span class="lvn">✓ ${lv}</span><span class="st">★ ${st}</span></li>`;
-    let html=(top||[]).map(r=>row(r.pos,r.name,r.levels,r.stars,r.pos===me)).join('');
-    if(me&&me>(top||[]).length){const t=totals(prof());html+=`<li class="gap">⋯</li>`+row(me,S.current,t.levels,t.stars,true)}
-    b.innerHTML=html||'<li class="msg">No scores yet. Clear a level to be first!</li>';
-    $('#oTop').innerHTML=kick(me?`You’re #${me}`:'🏆 Top 50');
-  }catch(e){if(mode==='board')b.innerHTML='<li class="msg">Couldn’t load the leaderboard. Check your connection and try again.</li>'}
+    if(tab==='all'){
+      const [top,me]=await Promise.all([lbCall('top_scores',{n:50}),S.current?lbCall('my_rank',{p_id:pid()}):null]);if(stale())return;
+      const row=(pos,name,lv,st,ms,mine)=>`<li class="${mine?'me':''}"><b>${MEDAL[pos-1]||pos}</b><span class="nm">${esc(name)}${ms?`<small>⏱ ${fmtMs(ms)}</small>`:''}</span><span class="lvn">✓ ${lv}</span><span class="st">★ ${st}</span></li>`;
+      let html=(top||[]).map(r=>row(r.pos,r.name,r.levels,r.stars,r.total_ms,r.pos===me)).join('');
+      if(me&&me>(top||[]).length){const t=totals(prof());html+=gap+row(me,S.current,t.levels,t.stars,t.ms,true)}
+      b.innerHTML=html||'<li class="msg">No scores yet. Clear a level to be first!</li>';
+      $('#oTop').innerHTML=kick(me?`You’re #${me} overall`:'🏆 Top 50');
+    }else{
+      const L=boardLvl+1,[top,mine]=await Promise.all([lbCall('top_times',{p_level:L,n:10}),S.current?lbCall('my_time',{p_id:pid(),p_level:L}):[]]);if(stale())return;
+      const me=mine&&mine[0];
+      const row=(pos,name,ms,isMe)=>`<li class="fast${isMe?' me':''}"><b>${MEDAL[pos-1]||pos}</b><span class="nm">${esc(name)}</span><span class="tm">${fmtMs(ms)}</span></li>`;
+      let html=(top||[]).map(r=>row(r.pos,r.name,r.ms,!!me&&r.pos===me.pos)).join('');
+      if(me&&me.pos>(top||[]).length)html+=gap+row(me.pos,S.current,me.ms,true);
+      b.innerHTML=html||'<li class="msg">No times on this level yet.</li>';
+      $('#oTop').innerHTML=kick(me?`You’re #${me.pos} on level ${L}`:`Level ${L} · fastest`);
+    }
+  }catch(e){if(!stale())b.innerHTML='<li class="msg">Couldn’t load the leaderboard. Check your connection and try again.</li>'}
+}
+$('#btabs').onclick=e=>{const t=e.target.closest('button');if(!t||t.dataset.t===boardTab)return;SFX.click(1400);boardTab=t.dataset.t;drawBoard()};
+$('#lvpick').onclick=e=>{const d=e.target.closest('button');if(!d)return;const n=Math.min(LEVELS.length-1,Math.max(0,boardLvl+ +d.dataset.d));if(n===boardLvl)return;SFX.ratchet();boardLvl=n;drawBoard()};
+// briefing: your best time and the level record, filled in once known
+function drawRecord(){
+  const i=lvl,b=prof().best[i],add=h=>{if(mode==='brief'&&lvl===i)$('#chips').insertAdjacentHTML('beforeend',h)};
+  if(b&&b.ms)add(chip('Best '+fmtMs(b.ms)));
+  if(lbOn())lbCall('top_times',{p_level:i+1,n:1}).then(t=>{if(t&&t[0])add(chip(`🏆 ${fmtMs(t[0].ms)} · ${esc(t[0].name)}`,'rec'))}).catch(()=>{});
 }
 
 /* ---------- overlay screens: name · map · brief · win · lose · board ---------- */
@@ -691,14 +742,14 @@ function showOver(m,why){
   if(m==='win'){const r=G.result;top=kick(last?'Master technician':`Level ${n} cleared`)+starHTML(r.stars);
     title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
     text=last?'All 100 levels defused.':'';
-    chips=chip('⏱ '+clockText())+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
+    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=last?'ALL LEVELS':'NEXT ▶'}
   if(m==='lose'){top=kick(`Level ${n}`);title='BOOM';text=why;go='RETRY'}
-  if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK';drawBoard()}
+  if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
-  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';
+  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
   $('#alt').hidden=m!=='win';
   const w=$('#who');w.hidden=!link;w.textContent=link;
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();if(m==='board')drawBoard();if(m==='brief')drawRecord();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
   // on the map, scroll the current level into view
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
@@ -735,7 +786,7 @@ function goBack(){
   showOver('map');
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
-$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';showOver('board')};
+$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab=boardFrom==='brief'?'fast':'all';showOver('board')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -1052,7 +1103,7 @@ $('#plate').onclick=e=>{
 
 /* start: name screen for new players, otherwise the next level's briefing */
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
-preview();showOver(S.current?'brief':'name');submitScore();
+preview();showOver(S.current?'brief':'name');submitScore();submitTimes();
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
 $('#mute').onclick=()=>{S.muted=!S.muted;save();if(master)master.gain.value=S.muted?0:1;else audioOn();drawMute();SFX.click(1400)};drawMute();
