@@ -191,6 +191,7 @@ border-radius:16px;padding:14px 10px;box-shadow:inset 0 4px 12px #000;margin-bot
 .chip{background:rgba(0,0,0,.35);border-radius:999px;padding:8px 16px;font:22px/1 "Share Tech Mono",monospace;color:#fff}
 .chip.hot{background:#f2c230;color:#161616;font:800 18px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em}
 .name{font-size:24px;min-height:60px;border-radius:16px;width:100%}
+.name.pin{font-size:18px;min-height:48px;margin-top:10px;letter-spacing:.08em}
 .lvls[hidden],.row[hidden],.link[hidden]{display:none}
 .lvls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;max-width:none;margin:0 0 20px}
 .lv{width:auto;height:auto;aspect-ratio:1;border-radius:16px;font:24px/1 "Share Tech Mono",monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 4px 0 #1b1e21}
@@ -369,7 +370,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <p id="oText"></p>
     <div class="chips" id="chips"></div>
     <div class="chips" id="ranks" aria-live="polite"></div>
-    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
+    <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"><input class="name pin" id="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Code (played before?)" aria-label="4-digit code, if you've played before"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
     <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button><button role="tab" data-t="daily">Daily</button></div>
     <div class="lvpick" id="lvpick" hidden><button class="ib" data-d="-1" aria-label="Previous level">◀</button><span id="lvpickT">Level 1</span><button class="ib" data-d="1" aria-label="Next level">▶</button></div>
@@ -632,7 +633,8 @@ if(!S||!S.players)S={current:'',players:{}};
 const DATA_VER=2;   // bump to restart everyone from level 1 (2: leaderboard reset, 2026-11-27)
 if(S.ver!==DATA_VER){for(const p of Object.values(S.players)){p.unlocked=0;p.best={};delete p.pend}S.ver=DATA_VER;try{localStorage.setItem('defusal',JSON.stringify(S))}catch(e){}}
 const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
-const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{}});
+const newPin=()=>String(Math.floor(Math.random()*10000)).padStart(4,'0');
+const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{},pin:newPin()});
 // older saves capped "unlocked" at the old last level: open the level after the furthest one cleared
 for(const p of Object.values(S.players)){const top=Math.max(-1,...Object.keys(p.best||{}).map(Number));p.unlocked=Math.min(Math.max(p.unlocked||0,top+1),LEVELS.length-1)}
 let lvl=0;
@@ -810,7 +812,7 @@ function end(win,why){
     if(betterStars){nb.s=stars;nb.t=left}
     if(pb){nb.ms=ms;(P.pend=P.pend||{})[lvl]=ms}
     P.best[lvl]=nb;const res=G.result={stars,ms,beat:betterStars||(pb&&!!(b&&b.ms))};
-    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();const sent=submitScore();
+    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();const sent=submitScore();syncSave();
     showOver('win');celebrate();
     // once saved, show where this puts the player: overall rank (with movement) and rank on this level's fastest times
     if(lbOn()){const i=lvl,id=pid();Promise.all([sent,submitTimes()])
@@ -835,7 +837,41 @@ const LB={url:'https://uhkkzzfbcchhcalmucwh.supabase.co',key:'sb_publishable_jgT
 const lbOn=()=>!!(LB.url&&LB.key);
 function lbCall(fn,body){
   const h={apikey:LB.key,'Content-Type':'application/json'};if(LB.key.startsWith('eyJ'))h.Authorization='Bearer '+LB.key;
-  return fetch(`${LB.url}/rest/v1/rpc/${fn}`,{method:'POST',headers:h,body:JSON.stringify(body)}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.status===204?null:r.json()});
+  return fetch(`${LB.url}/rest/v1/rpc/${fn}`,{method:'POST',headers:h,body:JSON.stringify(body)}).then(r=>{
+    if(!r.ok)return r.json().catch(()=>({})).then(j=>{throw new Error(j.message||'HTTP '+r.status)});
+    return r.status===204?null:r.json()});
+}
+
+/* ---------- your save, backed up online under your ID and 4-digit code ---------- */
+// two saves combine by keeping the better of each level: most stars, most time left, fastest time
+function mergeBest(a,b){
+  const out={...(a||{})};
+  for(const [k,y] of Object.entries(b||{})){const x=out[k];if(!y)continue;
+    if(!x){out[k]={...y};continue}
+    const ms=Math.min(x.ms||Infinity,y.ms||Infinity),m={s:Math.max(x.s||0,y.s||0),t:Math.max(x.t||0,y.t||0)};if(ms!==Infinity)m.ms=ms;out[k]=m}
+  return out;
+}
+function mergeInto(P,prog){
+  if(!prog)return;P.best=mergeBest(P.best,prog.best);
+  const top=Math.max(-1,...Object.keys(P.best).map(Number));
+  P.unlocked=Math.min(Math.max(P.unlocked||0,prog.unlocked||0,top+1),LEVELS.length-1);
+}
+// pull the online save into this device, then send the combined save back
+function syncSave(){
+  if(!lbOn()||!S.current)return Promise.resolve();
+  const P=prof();if(!P.pin){P.pin=newPin();save()}
+  const id=pid(),up=()=>lbCall('save_progress',{p_id:id,p_name:S.current,p_pin:P.pin,p_progress:{best:P.best,unlocked:P.unlocked}});
+  return lbCall('load_progress',{p_id:id,p_pin:P.pin}).then(prog=>{if(prog){mergeInto(P,prog);save()}return up()})
+    .catch(e=>{if(e.message==='pin taken'){P.pin=newPin();save();return up().catch(()=>{})}});   // someone with this name has that code
+}
+// play as an existing player on this device: name + code
+function claimPlayer(name,code){
+  const old=S.players[name]&&S.players[name].id;
+  return lbCall('claim_player',{p_name:name,p_pin:code,p_old_id:old||null}).then(r=>{
+    const m=r&&r[0];if(!m)throw new Error('no match');
+    S.current=name;const P=prof();P.id=m.out_id;P.pin=code;mergeInto(P,m.out_progress);save();
+    return syncSave().then(()=>submitScore());
+  });
 }
 // 12.4s, or 1:02.4 past a minute
 const fmtMs=ms=>{const s=ms/1000;return s<60?s.toFixed(1)+'s':Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0')};
@@ -946,7 +982,8 @@ function showOver(m,why){
   if(m==='map')daily=false;
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'SAVE':'PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'SAVE':'PLAY';$('#name').value=S.current;$('#pin').value='';
+    if(lbOn())text=S.current?`Your code is ${prof().pin}. Use it with your name to play on another device.`:'Played before on another device? Add your 4-digit code.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
@@ -979,7 +1016,15 @@ $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
   if(mode==='name'){
     const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
-    const changing=!!S.current;S.current=v;const P=prof();save();
+    const changing=!!S.current,code=$('#pin').value.trim();
+    if(code){
+      if(!/^[0-9]{4}$/.test(code)){$('#oText').textContent='The code is 4 digits.';return}
+      if(!lbOn()){$('#oText').textContent='Codes need the online leaderboard.';return}
+      const g=$('#go');g.disabled=true;$('#oText').textContent='Checking…';
+      claimPlayer(v,code).then(()=>{g.disabled=false;$('#pin').value='';if(changing)showOver('map');else toBrief(Math.min(prof().unlocked,LEVELS.length-1))})
+        .catch(e=>{g.disabled=false;$('#oText').textContent=e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.'});
+      return}
+    S.current=v;const P=prof();save();syncSave();
     if(changing){showOver('map');return}
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
@@ -992,6 +1037,7 @@ let boardTimer=0;
 $('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+$('#pin').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
 // ☰ during play: abandon the level and go to the map
 /* ---------- top bar: ← back · 🏆 leaderboard · 🔊 mute ---------- */
@@ -1414,7 +1460,7 @@ $('#plate').onclick=e=>{
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
 // reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
 let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
-preview();showOver(S.current?'brief':'name');submitScore();submitTimes();submitDaily();
+preview();showOver(S.current?'brief':'name');submitScore();submitTimes();submitDaily();syncSave().then(()=>{if(mode==='map')drawLvls()});
 if(wasBoard&&S.current&&lbOn()){boardOrigin=null;boardLvl=lvl;boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};

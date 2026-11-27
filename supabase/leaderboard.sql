@@ -3,6 +3,25 @@
 -- The game's public key can only call the functions below; the tables themselves stay locked.
 -- The game has 150 levels (450 stars).
 
+-- ── Saves and linked devices (created first: the leaderboard functions below read player_links) ──
+-- players: each player's progress backed up online, protected by a 4-digit code used with their name.
+create table if not exists public.players (
+  player_id  uuid primary key,
+  name       text  not null check (char_length(name) between 1 and 20),
+  pin        text  not null check (pin ~ '^[0-9]{4}$'),
+  progress   jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.players enable row level security;        -- no policies: no direct reads or writes
+-- player_links: an old device ID now playing as another player. Nothing is deleted; the old ID's
+-- leaderboard rows are just left out of the boards.
+create table if not exists public.player_links (
+  old_id    uuid primary key,
+  new_id    uuid not null,
+  linked_at timestamptz not null default now()
+);
+alter table public.player_links enable row level security;   -- no policies: no direct reads or writes
+
 -- ── Overall board: levels cleared, stars, and total time ─────────────────────
 create table if not exists public.scores (
   player_id  uuid primary key,
@@ -66,6 +85,7 @@ language sql stable security definer set search_path = public as $$
   select row_number() over (order by s.levels desc, s.stars desc, s.total_ms asc nulls last, s.updated_at asc),
          s.name, s.levels, s.stars, s.total_ms
   from scores s
+  where s.player_id not in (select old_id from player_links)
   order by 1
   limit least(greatest(n, 1), 100);
 $$;
@@ -77,6 +97,7 @@ returns bigint language sql stable security definer set search_path = public as 
     select s.player_id,
            row_number() over (order by s.levels desc, s.stars desc, s.total_ms asc nulls last, s.updated_at asc) as r
     from scores s
+    where s.player_id not in (select old_id from player_links)
   ) t where t.player_id = p_id;
 $$;
 
@@ -114,7 +135,7 @@ returns table (pos bigint, name text, ms int)
 language sql stable security definer set search_path = public as $$
   select row_number() over (order by t.ms asc, t.set_at asc), t.name, t.ms
   from level_times t
-  where t.level = p_level
+  where t.level = p_level and t.player_id not in (select old_id from player_links)
   order by 1
   limit least(greatest(n, 1), 50);
 $$;
@@ -125,7 +146,7 @@ returns table (pos bigint, ms int)
 language sql stable security definer set search_path = public as $$
   select x.r, x.ms from (
     select t.player_id, t.ms, row_number() over (order by t.ms asc, t.set_at asc) as r
-    from level_times t where t.level = p_level
+    from level_times t where t.level = p_level and t.player_id not in (select old_id from player_links)
   ) x where x.player_id = p_id;
 $$;
 
@@ -161,7 +182,7 @@ returns table (pos bigint, name text, ms int)
 language sql stable security definer set search_path = public as $$
   select row_number() over (order by t.ms asc, t.set_at asc), t.name, t.ms
   from daily_times t
-  where t.day = p_day
+  where t.day = p_day and t.player_id not in (select old_id from player_links)
   order by 1
   limit least(greatest(n, 1), 50);
 $$;
@@ -172,20 +193,89 @@ returns table (pos bigint, ms int)
 language sql stable security definer set search_path = public as $$
   select x.r, x.ms from (
     select t.player_id, t.ms, row_number() over (order by t.ms asc, t.set_at asc) as r
-    from daily_times t where t.day = p_day
+    from daily_times t where t.day = p_day and t.player_id not in (select old_id from player_links)
   ) x where x.player_id = p_id;
 $$;
+
+-- ── Saves: progress = {"unlocked": n, "best": {"<level index>": {"s": stars, "t": secs left, "ms": time}}} ──
+-- merging two saves keeps the better of each: most stars, most time left, fastest time; progress only goes up
+create or replace function public.better_level(a jsonb, b jsonb)
+returns jsonb language sql immutable as $$
+  select case when a is null then b when b is null then a else jsonb_strip_nulls(jsonb_build_object(
+    's',  greatest(coalesce((a->>'s')::int, 0), coalesce((b->>'s')::int, 0)),
+    't',  greatest(coalesce((a->>'t')::int, 0), coalesce((b->>'t')::int, 0)),
+    'ms', nullif(least(coalesce((a->>'ms')::int, 2147483647), coalesce((b->>'ms')::int, 2147483647)), 2147483647)
+  )) end;
+$$;
+create or replace function public.merge_progress(a jsonb, b jsonb)
+returns jsonb language sql immutable as $$
+  select jsonb_build_object(
+    'unlocked', greatest(coalesce((a->>'unlocked')::int, 0), coalesce((b->>'unlocked')::int, 0)),
+    'best', coalesce((
+      select jsonb_object_agg(k, public.better_level(a->'best'->k, b->'best'->k))
+      from (select jsonb_object_keys(coalesce(a->'best', '{}'::jsonb)) as k
+            union select jsonb_object_keys(coalesce(b->'best', '{}'::jsonb))) ks
+    ), '{}'::jsonb));
+$$;
+
+-- back up a player's progress (merged with what's already saved). The first save sets their code.
+create or replace function public.save_progress(p_id uuid, p_name text, p_pin text, p_progress jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare cur public.players;
+begin
+  if p_pin !~ '^[0-9]{4}$' or jsonb_typeof(p_progress) <> 'object' or pg_column_size(p_progress) > 60000 then
+    raise exception 'invalid save';
+  end if;
+  select * into cur from players where player_id = p_id;
+  if not found then
+    -- name + code must point to one player, so a code already used with this name can't be reused
+    if exists (select 1 from players where lower(name) = lower(trim(p_name)) and pin = p_pin) then
+      raise exception 'pin taken';
+    end if;
+    insert into players (player_id, name, pin, progress)
+    values (p_id, left(trim(p_name), 20), p_pin, merge_progress('{}'::jsonb, p_progress));
+  elsif cur.pin <> p_pin then
+    raise exception 'wrong pin';
+  else
+    update players set name = left(trim(p_name), 20), progress = merge_progress(cur.progress, p_progress), updated_at = now()
+    where player_id = p_id;
+  end if;
+end $$;
+
+-- read a player's saved progress (needs their code)
+create or replace function public.load_progress(p_id uuid, p_pin text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select p.progress from players p where p.player_id = p_id and p.pin = p_pin;
+$$;
+
+-- play as an existing player on this device: name + code. The device's own old ID (if any) is linked,
+-- so its separate leaderboard rows stop showing; they are kept, not deleted.
+create or replace function public.claim_player(p_name text, p_pin text, p_old_id uuid default null)
+returns table (out_id uuid, out_progress jsonb)
+language plpgsql security definer set search_path = public as $$
+declare r public.players;
+begin
+  select * into r from players p where lower(p.name) = lower(trim(p_name)) and p.pin = p_pin order by p.updated_at desc limit 1;
+  if not found then raise exception 'no match'; end if;
+  if p_old_id is not null and p_old_id <> r.player_id then
+    insert into player_links (old_id, new_id) values (p_old_id, r.player_id)
+    on conflict (old_id) do update set new_id = excluded.new_id, linked_at = now();
+  end if;
+  return query select r.player_id, r.progress;
+end $$;
 
 -- ── Access: the public key may call these functions and nothing else ─────────
 revoke all on function
   public.submit_score(uuid, text, int, int, bigint), public.submit_score(uuid, text, int, int),
   public.top_scores(int), public.my_rank(uuid),
   public.submit_time(uuid, text, int, int), public.top_times(int, int), public.my_time(uuid, int),
-  public.submit_daily(uuid, text, date, int), public.top_daily(date, int), public.my_daily(uuid, date)
+  public.submit_daily(uuid, text, date, int), public.top_daily(date, int), public.my_daily(uuid, date),
+  public.save_progress(uuid, text, text, jsonb), public.load_progress(uuid, text), public.claim_player(text, text, uuid)
 from public;
 grant execute on function
   public.submit_score(uuid, text, int, int, bigint), public.submit_score(uuid, text, int, int),
   public.top_scores(int), public.my_rank(uuid),
   public.submit_time(uuid, text, int, int), public.top_times(int, int), public.my_time(uuid, int),
-  public.submit_daily(uuid, text, date, int), public.top_daily(date, int), public.my_daily(uuid, date)
+  public.submit_daily(uuid, text, date, int), public.top_daily(date, int), public.my_daily(uuid, date),
+  public.save_progress(uuid, text, text, jsonb), public.load_progress(uuid, text), public.claim_player(text, text, uuid)
 to anon, authenticated;
