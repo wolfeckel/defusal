@@ -169,6 +169,26 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
 .readout{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#15181b;border-radius:8px;padding:8px 12px;font:14px "Barlow Condensed",sans-serif;color:#9aa2a9}
 .readout b{font:24px "Share Tech Mono",monospace;color:#3d4247;letter-spacing:.2em;white-space:nowrap}
 .readout b.on{color:#46ff8a;text-shadow:0 0 10px rgba(70,255,138,.6)}
+/* levels */
+.mod[hidden]{display:none}
+.mods.one{grid-template-columns:minmax(0,1fr);max-width:440px;margin:0 auto}
+.device:has(.over:not([hidden])){min-height:600px}
+.mod.done{animation:okp .7s ease-out}
+@keyframes okp{0%{box-shadow:0 0 0 0 rgba(62,224,122,.85)}100%{box-shadow:0 0 0 22px rgba(62,224,122,0)}}
+.lcd.safe{color:var(--ok);text-shadow:0 0 14px rgba(62,224,122,.7)}
+.kicker{font:700 15px/1.2 "Barlow Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#f2c230;margin-bottom:6px}
+.stars{font-size:46px;line-height:1;letter-spacing:.08em;color:#f2c230;text-shadow:0 0 18px rgba(242,194,48,.6);margin:2px 0 10px}
+.stars span{display:inline-block;animation:pop .5s cubic-bezier(.2,1.7,.4,1) backwards}
+.stars i{font-style:normal;color:#4c545c;text-shadow:none}
+@keyframes pop{from{transform:scale(0) rotate(-120deg);opacity:0}}
+.name{font:600 20px Barlow,sans-serif;padding:10px 14px;min-height:48px;width:min(320px,100%);border-radius:10px;border:2px solid #4c545c;background:#15181b;color:#fff;text-align:center}
+.name:focus-visible{outline:3px solid #f2c230;outline-offset:2px}
+.lvls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:470px;margin:0 auto 16px}
+.lvls[hidden],.row[hidden],.link[hidden]{display:none}
+.lv{width:38px;height:38px;border:0;border-radius:8px;background:#3a4046;color:#eef0f2;font:16px "Share Tech Mono",monospace;cursor:pointer}
+.lv.won{background:#1f5134}.lv.cur{outline:3px solid #f2c230;outline-offset:1px}
+.lv:disabled{opacity:.3;cursor:default}.lv:focus-visible{outline:3px solid #fff}
+.link{display:block;margin:12px auto 0;background:none;border:0;color:#9aa2a9;text-decoration:underline;cursor:pointer;font:14px Barlow,sans-serif;min-height:32px}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -176,7 +196,7 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
 <div class="wrap">
 <header>
   <h1>Defusal training rig</h1>
-  <p>Read the casing, check the field manual, and neutralise all four modules, then crack the final lock behind the cover before the clock runs out. Every mistake costs time: 15, 30 or 60 seconds depending on difficulty. Play solo, or have a partner read the manual without seeing the device.</p>
+  <p>Read the casing, check the field manual, and neutralise every module before the clock runs out. Training starts with a single wire and builds, level by level, to the full rig and its final lock. Every mistake costs time. Play solo, or have a partner read the manual without seeing the device.</p>
 </header>
 <div class="grid">
 <section class="device" id="device" aria-label="Device">
@@ -219,14 +239,13 @@ transition:transform .8s cubic-bezier(.5,0,.8,.4),opacity .8s}
   </div>
   <div class="over" id="over">
     <div>
+      <div id="oTop"></div>
       <h2 id="oTitle">Ready to defuse?</h2>
-      <p id="oText">Pick a difficulty. Harder levels give you less time and bigger penalties for mistakes.</p>
-      <div class="row" id="times" style="margin-bottom:12px">
-        <button class="cta alt" data-t="420">7:00 Recruit · −15s</button>
-        <button class="cta alt" data-t="300" aria-pressed="true">5:00 Standard · −30s</button>
-        <button class="cta alt" data-t="180">3:00 Expert · −60s</button>
-      </div>
-      <button class="cta" id="go">Arm the device</button>
+      <p id="oText"></p>
+      <div class="row" id="nameRow" style="margin-bottom:14px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
+      <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
+      <div class="row"><button class="cta" id="go">Arm the device</button><button class="cta alt" id="alt" hidden>Replay level</button></div>
+      <button class="link" id="who" hidden>Change name</button>
     </div>
   </div>
 </section>
@@ -261,48 +280,98 @@ const PC=['red','blue','green','yellow'];
 const PMAP=[
  [{red:'blue',blue:'yellow',green:'green',yellow:'red'},{red:'red',blue:'blue',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'}],
  [{red:'blue',blue:'red',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'},{red:'green',blue:'red',green:'yellow',yellow:'blue'}]];
-const PENALTIES={420:15000,300:30000,180:60000};let PENALTY=30000;
+let PENALTY=30000;
 const HOLDDIGIT={blue:'4',yellow:'5',green:'2',red:'1'};
 
+/* ---------- levels: each one adds a little more ---------- */
+// mods: wires {rules, n:[min,max]} · button {rules} · keys {cols} · pulse {stages}. Only the listed rules appear in the manual,
+// and the device is generated so that one of them is the first rule that applies.
+const ORDER=['wires','button','keys','pulse'], TABN={wires:'Wires',button:'Button',keys:'Keypad',pulse:'Pulse'};
+const R5=[1,2,3,4,5], FW={rules:R5,n:[3,6]}, FB={rules:R5}, FK={cols:6}, FP={stages:3}, RIG={wires:FW,button:FB,keys:FK,pulse:FP};
+const LEVELS=[
+ {t:'First cut',time:120,pen:10,mods:{wires:{rules:[1],n:[3,3]}},intro:'Cut the right wire. The Wires page of the field manual tells you which one.'},
+ {t:'Yellow alert',time:120,pen:10,mods:{wires:{rules:[1,2],n:[3,4]}},intro:'A second wiring rule. Check the rules in order and use the first one that applies.'},
+ {t:'No black',time:120,pen:10,mods:{wires:{rules:[1,2,3],n:[3,5]}},intro:'Three wiring rules now, and up to five wires.'},
+ {t:'White lead',time:120,pen:10,mods:{wires:{rules:[1,2,3,4],n:[4,6]}},intro:'Four rules, up to six wires.'},
+ {t:'Full harness',time:105,pen:15,mods:{wires:FW},intro:'The complete wiring rules. A little less time, a bigger penalty.'},
+ {t:'Tap',time:120,pen:10,mods:{button:{rules:[2,4]}},intro:'New module: the Button. A tap is a quick press and release.'},
+ {t:'Hold',time:120,pen:10,mods:{button:{rules:[1,3,5]}},intro:'Sometimes you hold the button. Keep it down until the strip lights, then let go when the timer shows the right digit.'},
+ {t:'Tap or hold',time:120,pen:15,mods:{button:FB},intro:'All the button rules together.'},
+ {t:'Double trouble',time:180,pen:15,mods:{wires:FW,button:FB},intro:'Two modules on one device. Solve them in any order.'},
+ {t:'Symbols',time:120,pen:10,mods:{keys:{cols:2}},intro:'New module: the Keypad. Find the column that has all four symbols.'},
+ {t:'More symbols',time:120,pen:10,mods:{keys:{cols:4}},intro:'Four columns to search now.'},
+ {t:'Full keypad',time:120,pen:15,mods:{keys:FK},intro:'All six columns.'},
+ {t:'Cut and key',time:180,pen:15,mods:{wires:FW,keys:FK},intro:'Wires and Keypad on one device.'},
+ {t:'Press and key',time:180,pen:15,mods:{button:FB,keys:FK},intro:'Button and Keypad on one device.'},
+ {t:'Pulse',time:120,pen:10,mods:{pulse:{stages:1}},intro:'New module: Pulse. Watch the flash, look it up, press the matching pad.'},
+ {t:'Echo',time:120,pen:15,mods:{pulse:{stages:2}},intro:'Two stages. Each stage adds one flash to the sequence.'},
+ {t:'Full pulse',time:150,pen:15,mods:{pulse:FP},intro:'Three stages. Remember: the table changes after each mistake.'},
+ {t:'Wired pulse',time:180,pen:20,mods:{wires:FW,pulse:FP},intro:'Wires and Pulse on one device.'},
+ {t:'Three-way',time:240,pen:20,mods:{wires:FW,button:FB,keys:FK},intro:'Three modules at once.'},
+ {t:'Full rig',time:330,pen:20,mods:RIG,intro:'All four modules. This is the complete training device.'},
+ {t:'Final lock',time:420,pen:30,final:true,mods:RIG,intro:'New: when all four modules are done, the cover opens on the Final lock. Work out its code, or use the maintenance bypass.'},
+ {t:'Tighter',time:360,pen:30,final:true,mods:RIG,intro:'Same device, less time.'},
+ {t:'Standard issue',time:300,pen:30,final:true,mods:RIG,intro:'Standard difficulty.'},
+ {t:'Pressure',time:270,pen:40,final:true,mods:RIG,intro:'The clock keeps shrinking.'},
+ {t:'Short fuse',time:240,pen:45,final:true,mods:RIG,intro:'Mistakes hurt now.'},
+ {t:'Veteran',time:210,pen:60,final:true,mods:RIG,intro:'A full minute per mistake.'},
+ {t:'Expert',time:180,pen:60,final:true,mods:RIG,intro:'The last test. Clear it and you are a certified technician.'}];
+
+/* ---------- player & progress (saved in this browser) ---------- */
+const STORE='defusal', UNLOCK=/[?&]unlock\b/.test(location.search);
+let S=null;try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){}
+if(!S||!S.players)S={current:'',players:{}};
+const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
+const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{}});
+let lvl=0;
+
 /* ---------- state ---------- */
-let G=null, limit=300, raf=0, flashT=0, lastTick=-1;
+let G=null, raf=0, flashT=0, lastTick=-1;
 
 function newSerial(){const L='ABCDEFGHJKLMNPQRSTUVWXZ',D='0123456789';let s='';for(let i=0;i<5;i++)s+=Math.random()<.5?pick(L):pick(D);return s+pick(D)}
 
-function wireAnswer(w,serial){
+// each returns [rule number, answer]
+function wireRule(w,serial){
   const odd=+serial.slice(-1)%2===1, cnt=c=>w.filter(x=>x===c).length;
-  if(odd&&cnt('red')>0)return w.lastIndexOf('red');
-  if(cnt('yellow')===1)return w.indexOf('yellow');
-  if(cnt('black')===0)return 1;
-  if(w[0]==='white')return w.length-1;
-  return 0;
+  if(odd&&cnt('red')>0)return[1,w.lastIndexOf('red')];
+  if(cnt('yellow')===1)return[2,w.indexOf('yellow')];
+  if(cnt('black')===0)return[3,1];
+  if(w[0]==='white')return[4,w.length-1];
+  return[5,0];
 }
-function buttonAction(color,label,batt){
-  if(color==='blue'&&label==='ABORT')return 'hold';
-  if(batt>=2&&label==='DETONATE')return 'tap';
-  if(color==='white')return 'hold';
-  if(color==='red'&&label==='HOLD')return 'tap';
-  return 'hold';
+function buttonRule(color,label,batt){
+  if(color==='blue'&&label==='ABORT')return[1,'hold'];
+  if(batt>=2&&label==='DETONATE')return[2,'tap'];
+  if(color==='white')return[3,'hold'];
+  if(color==='red'&&label==='HOLD')return[4,'tap'];
+  return[5,'hold'];
 }
-function makeKeys(){
-  for(;;){const c=rnd(KEYCOLS.length),pickd=shuffle(KEYCOLS[c]).slice(0,4);
-    const fits=KEYCOLS.filter(col=>pickd.every(s=>col.includes(s)));
+function makeKeys(n){
+  for(;;){const c=rnd(n),pickd=shuffle(KEYCOLS[c]).slice(0,4);
+    const fits=KEYCOLS.slice(0,n).filter(col=>pickd.every(s=>col.includes(s)));
     if(fits.length===1)return{col:c,order:KEYCOLS[c].filter(s=>pickd.includes(s)),shown:shuffle(pickd),hits:0}}
 }
+const gen=(make,ok)=>{for(let i=0;i<80;i++){const x=make();if(ok(x))return x}return null};
 
 function newGame(){
-  const serial=newSerial(), batt=1+rnd(3);
-  const n=3+rnd(4), wires=Array.from({length:n},()=>pick(Object.keys(COL)));
-  const color=pick(['red','blue','yellow','white']), label=pick(['ABORT','HOLD','PRESS','DETONATE']);
-  G={serial,batt,vowel:/[AEIOU]/.test(serial)?1:0,left:limit*1000,strikes:0,over:false,solved:new Set(),
-    wires,cut:new Set(),wireAns:wireAnswer(wires,serial),
-    btn:{color,label,action:buttonAction(color,label,batt),downAt:0,strip:null,timer:0},
-    keys:makeKeys(),
-    pulse:{seq:[pick(PC),pick(PC),pick(PC)],stage:1,idx:0}};
+  const L=LEVELS[lvl],M=L.mods;PENALTY=L.pen*1000;
+  let serial,batt,wires,b;
+  for(;;){
+    serial=newSerial();batt=1+rnd(3);const nw=M.wires?M.wires.n:[3,6];
+    wires=gen(()=>Array.from({length:nw[0]+rnd(nw[1]-nw[0]+1)},()=>pick(Object.keys(COL))),w=>!M.wires||M.wires.rules.includes(wireRule(w,serial)[0]));
+    b=gen(()=>({color:pick(['red','blue','yellow','white']),label:pick(['ABORT','HOLD','PRESS','DETONATE'])}),x=>!M.button||M.button.rules.includes(buttonRule(x.color,x.label,batt)[0]));
+    if(wires&&b)break;
+  }
+  const {color,label}=b;
+  G={lvl:L,active:ORDER.filter(k=>M[k]),serial,batt,vowel:/[AEIOU]/.test(serial)?1:0,left:L.time*1000,strikes:0,over:false,solved:new Set(),
+    wires,cut:new Set(),wireAns:wireRule(wires,serial)[1],
+    btn:{color,label,action:buttonRule(color,label,batt)[1],downAt:0,strip:null,timer:0},
+    keys:makeKeys(M.keys?M.keys.cols:6),
+    pulse:{seq:[pick(PC),pick(PC),pick(PC)],stage:1,idx:0,of:M.pulse?M.pulse.stages:3}};
   G.code=''+(G.wireAns+1)+((batt+label.length)%10)+(G.keys.col+1)+([...serial].filter(ch=>/\d/.test(ch)).reduce((a,b)=>a+ +b,0)%10);
   G.stage='modules';G.entry='';G.busy=false;G.bypassed=false;
   G.harn={cols:shuffle(Object.keys(COL)).slice(0,5),cut:new Set(),screws:0};
-  render();
+  render();setManual();
 }
 
 /* ---------- rendering ---------- */
@@ -315,13 +384,15 @@ function render(){
   $('#pads').innerHTML=PC.map(c=>`<button class="pad" data-c="${c}" aria-label="${c} pad" style="background:${COL[c]};color:${COL[c]}"></button>`).join('');
   document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done'));
   const mods=$('.mods');mods.hidden=false;mods.classList.remove('lift');$('#m-final').hidden=true;
+  ORDER.forEach(id=>$('#m-'+id).hidden=!G.active.includes(id));mods.classList.toggle('one',G.active.length===1);
+  $('#clock').classList.remove('safe');
   $('#harness').innerHTML=G.harn.cols.map((c,i)=>`<button class="wire" data-c="${c}" aria-label="Harness wire ${'ABCDE'[i]}, ${c}"><span class="n">${'ABCDE'[i]}</span><span class="cable" style="background:${COL[c]}"></span><span class="post"></span></button>`).join('');
   $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
   const m=$('#mem');m.classList.remove('on');m.textContent='----';drawEntry();
   drawStrikes();drawStage();drawClock();
 }
 const drawStrikes=()=>{const m=$('#mist');m.querySelector('b').textContent=G.strikes;m.classList.toggle('bad',G.strikes>0)};
-const drawStage=()=>$('#stage').textContent=G.solved.has('pulse')?'Complete':`Stage ${G.pulse.stage} of 3`;
+const drawStage=()=>$('#stage').textContent=G.solved.has('pulse')?'Complete':`Stage ${G.pulse.stage} of ${G.pulse.of}`;
 const clockText=()=>{const s=Math.max(0,Math.ceil(G.left/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const drawClock=()=>$('#clock').textContent=clockText();
 
@@ -336,17 +407,65 @@ function strike(){
 }
 function solve(id){
   if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
-  if(G.solved.size===4)setTimeout(openCover,700);
+  if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,700);else defused()}
+}
+// stop the clock right away, then show the win screen
+function defused(){
+  G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);$('#clock').classList.add('safe');
+  setTimeout(()=>{G.over=false;end(true)},900);
 }
 function end(win,why){
   G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);
-  const t=clockText();
-  $('#oTitle').textContent=win?'Device defused':'Boom.';
-  $('#oText').textContent=win?`Final lock opened${G.bypassed?' through the maintenance bypass':''} with ${t} left and ${G.strikes} mistake${G.strikes===1?'':'s'}.`:`${why} The serial was ${G.serial}. Study the manual and try again.`;
-  $('#go').textContent='Play again';
-  if(win){$('#over').classList.remove('lost');$('#over').hidden=false;[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120))}
-  else{$('#over').classList.add('lost');explode(()=>{$('#over').hidden=false})}
+  if(win){
+    const left=Math.ceil(G.left/1000),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
+    G.result={stars,beat:!!b&&(stars>b.s||(stars===b.s&&left>b.t))};
+    if(!b||G.result.beat)P.best[lvl]={s:stars,t:left};
+    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();
+    showOver('win');celebrate();
+    [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120));
+    for(let i=0;i<stars;i++)setTimeout(()=>beep(1046+i*260,.12,'triangle',.07),650+i*250);
+  }
+  else{$('#over').hidden=true;explode(()=>showOver('lose',why))}
 }
+
+/* ---------- overlay screens: name · brief · win · lose ---------- */
+let mode='name';
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const kick=t=>`<div class="kicker">${t}</div>`;
+const starHTML=n=>`<div class="stars" aria-label="${n} of 3 stars">${[0,1,2].map(i=>`<span style="animation-delay:${.6+i*.25}s">${i<n?'★':'<i>★</i>'}</span>`).join('')}</div>`;
+function drawLvls(){
+  const P=prof();
+  $('#lvls').innerHTML=LEVELS.map((L,i)=>`<button class="lv${P.best[i]?' won':''}${i===lvl?' cur':''}" data-i="${i}"${i>P.unlocked?' disabled':''} title="${L.t}" aria-label="Level ${i+1}, ${L.t}${P.best[i]?', '+P.best[i].s+' stars':''}">${i+1}</button>`).join('');
+}
+function showOver(m,why){
+  mode=m;const L=LEVELS[lvl],n=lvl+1,o=$('#over'),last=lvl===LEVELS.length-1;
+  let top='',title='',text='',go='';
+  if(m==='name'){top=kick('Defusal training');title='Who’s defusing?';text='Enter your name to start training. Your progress is saved in this browser.';go='Start training';$('#name').value=S.current}
+  if(m==='brief'){top=kick(`Level ${n} of ${LEVELS.length}`);title=L.t;text=`${L.intro} ${fmt(L.time)} on the clock, −${L.pen}s per mistake.`;go='Arm the device';
+    $('#who').textContent=`Not ${S.current}? Change name`;drawLvls()}
+  if(m==='win'){const r=G.result;top=kick(`Level ${n} cleared`)+starHTML(r.stars);
+    title=last?`Certified, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
+    text=`${clockText()} left, ${G.strikes} mistake${G.strikes===1?'':'s'}${G.bypassed?', lock opened through the bypass':''}.${r.beat?' New personal best!':''}${r.stars<3?' Clear it with no mistakes for three stars.':''}${last?' You finished every level of training.':''}`;
+    go=last?'Level select':'Next level →'}
+  if(m==='lose'){top=kick(`Level ${n}: ${L.t}`);title='Boom.';text=`${why} The serial was ${G.serial}. Check the manual and try again.`;go='Try again';drawLvls()}
+  o.classList.toggle('lost',m==='lose');
+  $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='brief'&&m!=='lose';$('#alt').hidden=m!=='win';$('#who').hidden=m!=='brief';
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#go').textContent=go;o.hidden=false;
+  (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
+}
+function preview(){resetFX();newGame();G.over=true}
+$('#go').onclick=()=>{
+  if(mode==='name'){
+    const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
+    S.current=v;const P=prof();if(UNLOCK)P.unlocked=LEVELS.length-1;save();
+    lvl=Math.min(P.unlocked,LEVELS.length-1);preview();showOver('brief');return}
+  if(mode==='win'){if(lvl<LEVELS.length-1)lvl++;preview();showOver('brief');return}
+  start();
+};
+$('#alt').onclick=()=>start();
+$('#who').onclick=()=>showOver('name');
+$('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+$('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(!b||b.disabled)return;lvl=+b.dataset.i;preview();showOver('brief')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -459,6 +578,9 @@ function runFX(){
         ctx.fillStyle=p.c;ctx.fillRect(-p.sz/2,-p.sz/3,p.sz,p.sz*.66);ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-p.sz/2,p.sz/8,p.sz,p.sz*.2);ctx.restore();ctx.globalCompositeOperation='lighter';break;
       case 'flame':p.x+=p.vx+Math.sin((p.life+p.y)*.2)*.4;p.y+=p.vy;p.r*=.975;draw(t<.25?SPR.hot:t<.6?SPR.fire:SPR.ember,p.x,p.y,p.r,(1-t)*.9);break;
       case 'emb':p.x+=p.vx+Math.sin(p.life*.1+p.ph)*.6;p.y+=p.vy;p.vy*=.99;ctx.globalAlpha=(1-t)*(.6+.4*Math.sin(p.life*.5));ctx.fillStyle='#ffb347';ctx.fillRect(p.x,p.y,2.5,2.5);break;
+      case 'conf':p.x+=p.vx;p.y+=p.vy;p.vx*=.97;p.vy=p.vy*.97+.32;p.rot+=p.vr;
+        ctx.globalCompositeOperation='source-over';ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.globalAlpha=t>.8?(1-t)*5:1;
+        ctx.fillStyle=p.c;ctx.fillRect(-p.sz/2,-p.sz/4*Math.abs(Math.cos(p.life*.15+p.rot)),p.sz,p.sz/2*Math.abs(Math.cos(p.life*.15+p.rot))+1);ctx.restore();ctx.globalCompositeOperation='lighter';break;
       case 'smoke':case 'dust':p.x+=p.vx;p.y+=p.vy;p.vx*=.98;p.vy=p.k==='dust'?p.vy*.96:p.vy*.99-.01;p.r+=p.k==='dust'?1.2:.6;break;
       }
     }
@@ -469,6 +591,15 @@ function runFX(){
     if(FX.P.length>1600)FX.P.splice(0,FX.P.length-1600);
     if(FX.P.length||FX.rings.length||FX.burn)FX.raf=requestAnimationFrame(tick);else{ctx.clearRect(0,0,W,H);FX.raf=0}
   })();
+}
+// win burst: confetti in the casing colours, fired up out of the device
+function celebrate(){
+  if(RM())return;
+  const r=$('#device').getBoundingClientRect(),cx=Math.min(Math.max(r.left+r.width/2,40),innerWidth-40),cy=Math.min(Math.max(r.top+r.height*.3,40),innerHeight-40);
+  FX.rings.push({x:cx,y:cy,r:10,v:26,a:.35,w:6,flat:1});
+  for(let i=0;i<170;i++){const a=-Math.PI/2+(Math.random()-.5)*2.4,s=8+Math.random()*15;
+    FX.P.push({k:'conf',x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,rot:Math.random()*6,vr:(Math.random()-.5)*.4,sz:7+Math.random()*7,c:pick(['#3ee07a','#f2c230','#eeeeee','#2f6fe0','#e8382e']),life:0,max:130+Math.random()*70})}
+  runFX();
 }
 function resetFX(){
   FX.timers.forEach(clearTimeout);FX.timers=[];FX.burn=false;FX.P=[];FX.rings=[];FX.glow=0;
@@ -521,8 +652,6 @@ function start(){
   newGame();$('#over').hidden=true;lastTick=-1;resetFX();
   const p=performance.now();loop(p);schedFlash(600);
 }
-document.querySelectorAll('#times button').forEach(b=>b.onclick=()=>{limit=+b.dataset.t;PENALTY=PENALTIES[limit];document.querySelectorAll('#times button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
-$('#go').onclick=start;
 
 /* ---------- wires ---------- */
 $('#wires').onclick=e=>{
@@ -567,7 +696,7 @@ const TONE={red:330,blue:440,green:550,yellow:660};
 function schedFlash(delay){
   clearTimeout(flashT);
   flashT=setTimeout(function run(){
-    if(!G||G.over||G.solved.has('pulse'))return;
+    if(!G||G.over||G.solved.has('pulse')||!G.active.includes('pulse'))return;
     const s=G.pulse.seq.slice(0,G.pulse.stage);let i=0;
     (function step(){
       if(G.over)return;
@@ -583,7 +712,7 @@ $('#pads').onclick=e=>{
   const P=G.pulse, want=PMAP[G.vowel][Math.min(G.strikes,2)][P.seq[P.idx]];
   if(p.dataset.c===want){
     P.idx++;
-    if(P.idx===P.stage){P.stage++;P.idx=0;if(P.stage>3){solve('pulse');drawStage();return}drawStage();schedFlash(900);return}
+    if(P.idx===P.stage){P.stage++;P.idx=0;if(P.stage>P.of){solve('pulse');drawStage();return}drawStage();schedFlash(900);return}
     schedFlash(3500);
   }else{P.idx=0;strike();if(!G.over)schedFlash(1200)}
 };
@@ -606,9 +735,9 @@ function pressPin(k){
   if(k==='B'){G.entry=G.entry.slice(0,-1);drawEntry();beep(300,.04);return}
   if(k!=='E'){if(G.entry.length<4){G.entry+=k;drawEntry();beep(700+ +k*40,.05)}return}
   if(G.entry===G.code){
-    G.over=true;cancelAnimationFrame(raf);d.textContent='SAFE';d.className='vdisp ok';$('#m-final').classList.add('done');
+    d.textContent='SAFE';d.className='vdisp ok';$('#m-final').classList.add('done');
     [784,988,1175].forEach((f,i)=>setTimeout(()=>beep(f,.15,'sine',.08),i*100));
-    setTimeout(()=>{G.over=false;end(true)},1100);
+    defused();
   }else{
     G.busy=true;d.textContent='ERR';d.className='vdisp err';strike();
     setTimeout(()=>{G.busy=false;G.entry='';if(G.stage==='final')drawEntry()},800);
@@ -639,34 +768,30 @@ $('#harness').onclick=e=>{
 
 /* ---------- manual ---------- */
 const sw=c=>`<span class="sw" style="background:${COL[c]};outline:1px solid #0003"></span>${cap(c)}`;
-const PAGES={
- 'Casing':`<h3>Reading the casing</h3><ol>
+const WR={1:'if the serial’s last digit is odd and there is at least one red wire, cut the <b>last red</b> wire.',2:'if there is exactly one yellow wire, cut the <b>yellow</b> wire.',
+  3:'if there are no black wires, cut the <b>second</b> wire.',4:'if the first wire is white, cut the <b>last</b> wire.',5:'cut the <b>first</b> wire.'};
+const BR={1:'Blue button labelled ABORT: <b>hold</b>.',2:'Two or more batteries and labelled DETONATE: <b>tap</b>.',3:'White button: <b>hold</b>.',4:'Red button labelled HOLD: <b>tap</b>.',5:'Anything else: <b>hold</b>.'};
+function buildPages(L){
+ const M=L.mods,p={};
+ p['Casing']=`<h3>Reading the casing</h3><ol>
   <li><b>Serial number</b>: six characters on the plate. The last character is always a digit. Vowels are A, E, I, O, U.</li>
   <li><b>Batteries</b>: the count shown beside the serial.</li>
-  <li><b>Mistakes</b>: every wrong action knocks time off the timer: 15 seconds on Recruit, 30 on Standard, 60 on Expert. The device detonates only when the timer hits zero.</li>
+  <li><b>Mistakes</b>: every wrong action knocks <b>${L.pen} seconds</b> off the timer on this level. The device detonates only when the timer hits zero.</li>
   <li>When a module is solved, its lamp turns green.</li></ol>
-  <p class="note">Tip: play with a partner. One person sees only the device and describes it; the other sees only this manual.</p>`,
- 'Wires':`<h3>Wires</h3><p>Cut exactly one wire. Wires are numbered from the top. Use the first rule that applies:</p><ol>
-  <li>If the serial's last digit is odd and there is at least one red wire, cut the <b>last red</b> wire.</li>
-  <li>Otherwise, if there is exactly one yellow wire, cut the <b>yellow</b> wire.</li>
-  <li>Otherwise, if there are no black wires, cut the <b>second</b> wire.</li>
-  <li>Otherwise, if the first wire is white, cut the <b>last</b> wire.</li>
-  <li>Otherwise, cut the <b>first</b> wire.</li></ol>`,
- 'Button':`<h3>The button</h3><p>Decide whether to tap (press and release quickly) or hold. Use the first rule that applies:</p><ol>
-  <li>Blue button labelled ABORT: <b>hold</b>.</li>
-  <li>Two or more batteries and labelled DETONATE: <b>tap</b>.</li>
-  <li>White button: <b>hold</b>.</li>
-  <li>Red button labelled HOLD: <b>tap</b>.</li>
-  <li>Anything else: <b>hold</b>.</li></ol>
-  <p><b>Holding:</b> after a moment the strip beside the button lights up. Release when the timer shows this digit in any position:</p>
-  <table><thead><tr><th>Strip colour</th><th>Release on</th></tr></thead><tbody>${Object.entries(HOLDDIGIT).map(([c,d])=>`<tr><td>${sw(c)}</td><td><b>${d}</b></td></tr>`).join('')}</tbody></table>`,
- 'Keypad':`<h3>Keypad</h3><p>Exactly one column below contains all four symbols on the keypad. Press the four keys in the order they appear in that column, top to bottom.</p>
-  <div class="scroll"><table><thead><tr>${KEYCOLS.map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
-  ${KEYCOLS[0].map((_,r)=>`<tr>${KEYCOLS.map(c=>`<td class="sym">${c[r]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`,
- 'Pulse':`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order. Each stage adds one flash; clear three stages. The answer depends on whether the serial contains a vowel and on how many mistakes you have made <b>so far</b>.</p>
+  <p class="note">Tip: play with a partner. One person sees only the device and describes it; the other sees only this manual.</p>`;
+ if(M.wires)p['Wires']=`<h3>Wires</h3><p>Cut exactly one wire. Wires are numbered from the top.${M.wires.rules.length>1?' Use the first rule that applies:':''}</p><ol>
+  ${M.wires.rules.map((r,i)=>`<li>${i?'Otherwise, '+WR[r]:cap(WR[r])}</li>`).join('')}</ol>`;
+ if(M.button)p['Button']=`<h3>The button</h3><p>Decide whether to tap (press and release quickly) or hold.${M.button.rules.length>1?' Use the first rule that applies:':''}</p><ol>
+  ${M.button.rules.map(r=>`<li>${BR[r]}</li>`).join('')}</ol>
+  ${M.button.rules.some(r=>r%2)?`<p><b>Holding:</b> after a moment the strip beside the button lights up. Release when the timer shows this digit in any position:</p>
+  <table><thead><tr><th>Strip colour</th><th>Release on</th></tr></thead><tbody>${Object.entries(HOLDDIGIT).map(([c,d])=>`<tr><td>${sw(c)}</td><td><b>${d}</b></td></tr>`).join('')}</tbody></table>`:''}`;
+ if(M.keys){const K=KEYCOLS.slice(0,M.keys.cols);p['Keypad']=`<h3>Keypad</h3><p>Exactly one column below contains all four symbols on the keypad. Press the four keys in the order they appear in that column, top to bottom.</p>
+  <div class="scroll"><table><thead><tr>${K.map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
+  ${K[0].map((_,r)=>`<tr>${K.map(c=>`<td class="sym">${c[r]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+ if(M.pulse){const s=M.pulse.stages;p['Pulse']=`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order.${s>1?` Each stage adds one flash; clear ${s} stages.`:''} The answer depends on whether the serial contains a vowel and on how many mistakes you have made <b>so far</b>.</p>
   ${[1,0].map(v=>`<p style="margin:14px 0 0"><b>Serial ${v?'has':'has no'} vowel</b></p><div class="scroll"><table><thead><tr><th>Flash</th><th>0 mistakes</th><th>1 mistake</th><th>2 or more</th></tr></thead><tbody>
-  ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`,
- 'Final lock':`<h3>Final lock</h3><p>When all four modules are solved, the cover opens on the final lock. Enter its four-digit code and press ENT (a keyboard works too). A wrong code counts as a mistake.</p>
+  ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`}
+ if(L.final)p['Final lock']=`<h3>Final lock</h3><p>When all four modules are solved, the cover opens on the final lock. Enter its four-digit code and press ENT (a keyboard works too). A wrong code counts as a mistake.</p>
   <p><b>Working out the code</b></p><ol>
   <li>First digit: the number of the wire you correctly cut in the Wires module.</li>
   <li>Second digit: the battery count plus the number of letters on the button's label. If the total is 10 or more, use its last digit.</li>
@@ -674,16 +799,23 @@ const PAGES={
   <li>Fourth digit: add up all the digits in the serial number and use the last digit of the total.</li></ol>
   <p><b>Maintenance bypass</b></p><p>If you can't work out the code, remove the four screws on the maintenance plate and disconnect the lock's harness instead. Cut the wires in the order below for your battery count, skipping any colours that aren't there. A wrong cut sparks and counts as a mistake. Once every wire is cut, the lock's memory shows the code. Enter it to finish.</p>
   <div class="scroll"><table><thead><tr><th>Batteries</th><th style="text-align:start">Cut order</th></tr></thead><tbody>
-  ${[1,2,3].map(b=>`<tr><td><b>${b}</b></td><td style="text-align:start">${BYPASS[b].map(sw).join(' → ')}</td></tr>`).join('')}</tbody></table></div>`
-};
-const names=Object.keys(PAGES);
-$('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${i}" aria-selected="${i===0}">${n}</button>`).join('');
-const show=n=>{$('#page').innerHTML=PAGES[n];document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.textContent===n))};
+  ${[1,2,3].map(b=>`<tr><td><b>${b}</b></td><td style="text-align:start">${BYPASS[b].map(sw).join(' → ')}</td></tr>`).join('')}</tbody></table></div>`;
+ return p;
+}
+let PAGES={},curTab='Casing';
+const show=n=>{curTab=n;$('#page').innerHTML=PAGES[n];document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.textContent===n))};
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.textContent)};
-show('Casing');
+// rebuild the manual for the current level and open the page for whatever is new on it
+function setManual(){
+  const L=LEVELS[lvl],prev=LEVELS[lvl-1];PAGES=buildPages(L);const names=Object.keys(PAGES);
+  $('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${i}" aria-selected="false">${n}</button>`).join('');
+  const fresh=G.active.find(k=>!prev||!prev.mods[k]);
+  show(L.final&&!(prev&&prev.final)?'Final lock':fresh?TABN[fresh]:names.includes(curTab)?curTab:names[1]);
+}
 
-/* idle preview behind the start screen */
-newGame();G.over=true;
+/* start: name screen for new players, otherwise the next level's briefing */
+if(S.current){const P=prof();if(UNLOCK){P.unlocked=LEVELS.length-1;save()}lvl=Math.min(P.unlocked,LEVELS.length-1)}
+preview();showOver(S.current?'brief':'name');
 }
 </script>
 </body>
