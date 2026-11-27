@@ -253,7 +253,9 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 /* mute + leaderboard */
 .topbar{position:fixed;top:10px;left:0;right:0;max-width:544px;margin:0 auto;padding:0 12px;z-index:45;display:flex;gap:8px;pointer-events:none}
 .topbar .sp{flex:1;min-width:0;display:flex;justify-content:center;align-items:center}.topbar .ib{pointer-events:auto}.topbar .ib[hidden]{display:none}
-.me{pointer-events:auto;max-width:100%;min-height:40px;padding:0 14px;border:0;border-radius:999px;background:var(--case);color:#eef0f2;box-shadow:0 4px 0 #15181b;cursor:pointer;
+.topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.topbar .tl,.topbar .tr{display:flex;gap:8px;min-width:0}.topbar .tr{justify-content:flex-end}
+.me{pointer-events:auto;max-width:min(100%,46vw);min-height:40px;padding:0 14px;border:0;border-radius:999px;background:var(--case);color:#eef0f2;box-shadow:0 4px 0 #15181b;cursor:pointer;
   font:700 17px "Barlow Condensed",sans-serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .me[hidden]{display:none}.me:active{transform:translateY(3px);box-shadow:0 1px 0 #15181b}.me:focus-visible{outline:3px solid #fff}
 .me small{color:#9aa2a9;font-weight:400;margin-left:4px}
@@ -359,7 +361,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
+<nav class="topbar" aria-label="Navigation"><span class="tl"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button></span><span class="sp"><button class="me" id="me" hidden></button></span><span class="tr"><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></span></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
