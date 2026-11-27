@@ -244,6 +244,8 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 /* six-digit codes */
 .vdisp.long{letter-spacing:.2em;text-indent:.2em}
 .codebig.long{letter-spacing:.1em;text-indent:.1em;font-size:clamp(30px,8vw,42px)}
+.pad.pop{animation:padpop .18s ease-out}@keyframes padpop{from{transform:scale(.8)}}
+.pad.bad{animation:bad .4s}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -323,57 +325,57 @@ let PENALTY=10000;
 
 /* ---------- levels: each one adds a little more ---------- */
 // wires {n:[min,max], clues, cuts} · button {kinds, zone %, speed s, slide s} · keys {n, len, memo ms, rev chance}
-// pulse {stages, ms, rev chance} · switches {n, opp chance, memo ms} · dial {drift ms}
+// pulse {taps, rev chance} · switches {n, opp chance, memo ms} · dial {drift ms}
 // level extras: final {len, memo} · hide (ms before every instruction screen goes blank) · sd (sudden death) · boss
 const ORDER=['wires','button','keys','pulse','switches','dial'];
 const W=(n,clues,cuts=1)=>({n,clues,cuts}), B=(kinds,zone=30,speed=2,slide=0)=>({kinds,zone,speed,slide}),
-  K=(n,len,memo=0,rev=0)=>({n,len,memo,rev}), P=(stages,ms=500,rev=0)=>({stages,ms,rev}),
+  K=(n,len,memo=0,rev=0)=>({n,len,memo,rev}), P=(taps,rev=0)=>({taps,rev}),
   SW=(n,opp=0,memo=0)=>({n,opp,memo}), D=(drift=0)=>({drift});
 const WALL=['color','num','ord','odd'], W2=[...WALL,'all'], BALL=['tap','taps','hold'];
 const LV=(t,time,pen,mods,intro,final,x={})=>({t,time,pen,mods,intro,final,...x});
 const LEVELS=[
- // ── World 1 · Training
- LV('First cut',45,5,{wires:W([3,3],['color'])},'Cut the wire the screen shows.'),
- LV('By number',45,5,{wires:W([4,4],['num'])},'Wires are numbered.'),
- LV('Which one?',45,5,{wires:W([4,5],['ord'])},'Count from the top.'),
- LV('Odd one out',40,5,{wires:W([5,6],['odd'])},'Spot the different one.'),
- LV('Double cut',50,8,{wires:W([5,6],['color','num','ord'],2)},'Two cuts, in order.'),
- LV('Push',40,5,{button:B(['tap','taps'])},'New: the Button.'),
- LV('Hold it',45,5,{button:B(['hold'],32,2.2)},'Hold, let go in the green.'),
- LV('Tap or hold',45,8,{button:B(BALL,26,1.8)},'Do what the screen says.'),
- LV('Two at once',60,8,{wires:W([4,6],WALL),button:B(BALL,26,1.8)},'Two modules.'),
- LV('Keypad',45,5,{keys:K(4,3)},'New: the Keypad.'),
- LV('Four in a row',45,5,{keys:K(4,4)},'Four symbols.'),
- LV('Six keys',45,8,{keys:K(6,4)},'More keys.'),
- LV('Remember',50,8,{keys:K(4,4,2500)},'Memorise it. It vanishes.'),
- LV('Cut and key',70,8,{wires:W([4,6],WALL,2),keys:K(6,4)},'Wires + Keypad.'),
- LV('Simon',50,5,{pulse:P(2,560)},'New: Pulse. Repeat the flashes.'),
- LV('Echo',55,8,{pulse:P(3,480)},'Three flashes.'),
- LV('Faster',60,8,{pulse:P(4,380)},'Four, faster.'),
- LV('Three modules',90,10,{wires:W([4,6],WALL,2),button:B(BALL,24,1.6),keys:K(6,4)},'Three modules.'),
- LV('Full rig',120,10,{wires:W([4,6],WALL,2),button:B(BALL,24,1.6),keys:K(6,4),pulse:P(3,460)},'All four.'),
- LV('Final lock',150,10,{wires:W([4,6],WALL,2),button:B(BALL,24,1.6),keys:K(6,4),pulse:P(3,460)},'New: the Final lock.',{memo:0}),
- LV('Quick fingers',125,10,{wires:W([4,6],WALL,2),button:B(BALL,22,1.5),keys:K(6,4),pulse:P(4,420)},'Less time.',{memo:0}),
- LV('Triple cut',125,12,{wires:W([5,7],WALL,3),button:B(BALL,22,1.5),keys:K(6,4),pulse:P(4,420)},'Three cuts.',{memo:0}),
- LV('Narrow',120,12,{wires:W([5,7],WALL,3),button:B(BALL,15,1.3),keys:K(6,5),pulse:P(4,400)},'Tiny green zone.',{memo:0}),
- LV('Memory',120,12,{wires:W([5,7],WALL,3),button:B(BALL,15,1.3),keys:K(6,5,2200),pulse:P(4,400)},'Remember everything.',{memo:2500}),
- LV('Long pulse',120,15,{wires:W([5,7],WALL,3),button:B(BALL,15,1.3),keys:K(6,5,2000),pulse:P(5,340)},'Five flashes.',{memo:2200}),
- LV('Short fuse',105,15,{wires:W([5,7],WALL,3),button:B(BALL,13,1.15),keys:K(6,5,1800),pulse:P(5,330)},'Short fuse.',{memo:2000}),
- LV('Expert',95,20,{wires:W([6,7],WALL,3),button:B(BALL,12,1.05),keys:K(6,5,1600),pulse:P(5,310)},'The final test of training.',{memo:1800}),
+ // ── World 1 · Training (gentle: lots of time, small penalties)
+ LV('First cut',60,3,{wires:W([3,3],['color'])},'Cut the wire the screen shows.'),
+ LV('By number',60,3,{wires:W([4,4],['num'])},'Wires are numbered.'),
+ LV('Which one?',60,3,{wires:W([4,5],['ord'])},'Count from the top.'),
+ LV('Odd one out',60,3,{wires:W([5,6],['odd'])},'Spot the different one.'),
+ LV('Double cut',60,5,{wires:W([5,6],['color','num','ord'],2)},'Two cuts, in order.'),
+ LV('Push',60,3,{button:B(['tap','taps'])},'New: the Button.'),
+ LV('Hold it',60,3,{button:B(['hold'],40,2.6)},'Hold, let go in the green.'),
+ LV('Tap or hold',60,5,{button:B(BALL,34,2.2)},'Do what the screen says.'),
+ LV('Two at once',90,5,{wires:W([4,6],WALL),button:B(BALL,34,2.2)},'Two modules.'),
+ LV('Keypad',60,3,{keys:K(4,3)},'New: the Keypad.'),
+ LV('Four in a row',60,3,{keys:K(4,4)},'Four symbols.'),
+ LV('Six keys',60,5,{keys:K(6,4)},'More keys.'),
+ LV('Remember',60,5,{keys:K(4,4,3500)},'Memorise it. It vanishes.'),
+ LV('Cut and key',90,5,{wires:W([4,6],WALL,2),keys:K(6,4)},'Wires + Keypad.'),
+ LV('Whack',60,3,{pulse:P(4)},'New: Pulse. Tap the lit pad.'),
+ LV('Reflex',60,3,{pulse:P(5)},'More taps.'),
+ LV('Quick hands',60,5,{pulse:P(6)},'Faster now.'),
+ LV('Three modules',120,8,{wires:W([4,6],WALL,2),button:B(BALL,30,2),keys:K(6,4)},'Three modules.'),
+ LV('Full rig',150,8,{wires:W([4,6],WALL,2),button:B(BALL,30,2),keys:K(6,4),pulse:P(5)},'All four.'),
+ LV('Final lock',180,8,{wires:W([4,6],WALL,2),button:B(BALL,30,2),keys:K(6,4),pulse:P(5)},'New: the Final lock.',{memo:0}),
+ LV('Quick fingers',150,8,{wires:W([4,6],WALL,2),button:B(BALL,26,1.8),keys:K(6,4),pulse:P(6)},'Less time.',{memo:0}),
+ LV('Triple cut',150,10,{wires:W([5,7],WALL,3),button:B(BALL,26,1.8),keys:K(6,4),pulse:P(6)},'Three cuts.',{memo:0}),
+ LV('Narrow',140,10,{wires:W([5,7],WALL,3),button:B(BALL,20,1.5),keys:K(6,5),pulse:P(6)},'Smaller green zone.',{memo:0}),
+ LV('Memory',140,10,{wires:W([5,7],WALL,3),button:B(BALL,20,1.5),keys:K(6,5,3000),pulse:P(6)},'Remember everything.',{memo:3000}),
+ LV('Long run',135,12,{wires:W([5,7],WALL,3),button:B(BALL,18,1.4),keys:K(6,5,2500),pulse:P(7)},'Seven taps.',{memo:2500}),
+ LV('Short fuse',120,12,{wires:W([5,7],WALL,3),button:B(BALL,16,1.3),keys:K(6,5,2200),pulse:P(7)},'Short fuse.',{memo:2200}),
+ LV('Expert',110,15,{wires:W([6,7],WALL,3),button:B(BALL,14,1.2),keys:K(6,5,2000),pulse:P(7)},'The final test of training.',{memo:2000}),
  // ── World 2 · Twists
  LV('All the reds',45,5,{wires:W([5,7],['all'])},'Cut every wire of that colour.'),
  LV('Clean sweep',50,8,{wires:W([5,7],['all','color','ord'],2)},'Mixed cuts.'),
- LV('Twister',120,10,{wires:W([5,7],W2,2),button:B(BALL,22,1.5),keys:K(6,4),pulse:P(4,420)},'Boss level.',{memo:0},{boss:1}),
+ LV('Twister',120,10,{wires:W([5,7],W2,2),button:B(BALL,22,1.5),keys:K(6,4),pulse:P(6)},'Boss level.',{memo:0},{boss:1}),
  LV('Backwards',45,5,{keys:K(4,4,0,1)},'◀ means press them in reverse.'),
  LV('Either way',50,8,{keys:K(6,5,0,.5)},'Watch for the ◀.'),
  LV('Moving target',45,5,{button:B(['hold'],28,1.8,2.4)},'The green zone moves.'),
  LV('Slippery',45,8,{button:B(BALL,20,1.5,1.8)},'Faster, smaller zone.'),
- LV('Mirror image',55,5,{pulse:P(3,480,1)},'◀ means repeat it backwards.'),
- LV('Which way?',60,8,{pulse:P(4,420,.5)},'Forwards or backwards?'),
+ LV('Mirror image',55,5,{pulse:P(5,1)},'◀ means tap the OPPOSITE pad.'),
+ LV('Which way?',60,8,{pulse:P(6,.5)},'Watch for the ◀.'),
  LV('Long code',80,8,{wires:W([5,7],W2,2),button:B(BALL,22,1.5,2.2)},'Six-digit code.',{len:6}),
- LV('Twist mix',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(4,420,.5)},'Every twist at once.',{len:4}),
- LV('Twist and shout',115,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(4,400,.5)},'Tighter.',{len:6}),
- LV('Big twist',105,12,{wires:W([6,7],W2,3),button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(5,380,.5)},'Boss level.',{len:6,memo:2500},{boss:1}),
+ LV('Twist mix',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(6,.5)},'Every twist at once.',{len:4}),
+ LV('Twist and shout',115,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(6,.5)},'Tighter.',{len:6}),
+ LV('Big twist',105,12,{wires:W([6,7],W2,3),button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(7,.5)},'Boss level.',{len:6,memo:2500},{boss:1}),
  // ── World 3 · Switches
  LV('Flip',40,5,{switches:SW(3)},'New: Switches. Match the arrows.'),
  LV('Five switches',40,5,{switches:SW(5)},'Five of them.'),
@@ -383,7 +385,7 @@ const LEVELS=[
  LV('Flip and cut',70,8,{switches:SW(5,.5),wires:W([5,7],W2,2)},'Switches + Wires.'),
  LV('Flip and key',70,8,{switches:SW(5,.5),keys:K(6,5,0,.5)},'Switches + Keypad.'),
  LV('Flip and hold',70,10,{switches:SW(5,.5,1800),button:B(BALL,20,1.5,2)},'Switches + Button.'),
- LV('Four-way',120,10,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),pulse:P(4,420,.5),switches:SW(5,.5)},'Four modules.',{len:4}),
+ LV('Four-way',120,10,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),pulse:P(6,.5),switches:SW(5,.5)},'Four modules.',{len:4}),
  LV('Switchboard',110,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),switches:SW(5,.5,1800)},'Boss level.',{len:6},{boss:1}),
  // ── World 4 · Dial
  LV('Dial',40,5,{dial:D()},'New: the Dial. Turn it, then LOCK.'),
@@ -391,38 +393,38 @@ const LEVELS=[
  LV('Drift',40,5,{dial:D(1500)},'It drifts back. Be quick.'),
  LV('Strong drift',40,8,{dial:D(900)},'Faster drift.'),
  LV('Dial and flip',60,8,{dial:D(1200),switches:SW(5,.5)},'Dial + Switches.'),
- LV('Dial and pulse',70,8,{dial:D(1200),pulse:P(4,420,.5)},'Dial + Pulse.'),
+ LV('Dial and pulse',70,8,{dial:D(1200),pulse:P(6,.5)},'Dial + Pulse.'),
  LV('Dial and key',70,10,{dial:D(1000),keys:K(6,5,1800,.5)},'Dial + Keypad.'),
  LV('Radio',85,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),dial:D(1000)},'Three modules.'),
- LV('Tuned rig',120,10,{keys:K(6,5,0,.5),pulse:P(4,420,.5),switches:SW(5,.5),dial:D(900)},'Four modules.',{len:4}),
+ LV('Tuned rig',120,10,{keys:K(6,5,0,.5),pulse:P(6,.5),switches:SW(5,.5),dial:D(900)},'Four modules.',{len:4}),
  LV('Radio silence',110,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),switches:SW(5,.5,1500),dial:D(800)},'Boss level.',{len:6},{boss:1}),
  // ── World 5 · Memory: every instruction screen goes blank after a moment
  LV('Blink',50,5,{wires:W([5,7],W2,2)},'Instructions vanish. Memorise them.',undefined,{hide:3000}),
  LV('Blink twice',60,8,{button:B(BALL,22,1.5),switches:SW(5,.5)},'Two modules, both vanish.',undefined,{hide:3000}),
  LV('Gone',70,8,{dial:D(1200),keys:K(6,5,0,.5)},'Dial + Keypad, vanishing.',undefined,{hide:2500}),
  LV('Recall',85,10,{wires:W([5,7],W2,2),switches:SW(5,.5),dial:D(1200)},'Three modules.',undefined,{hide:2500}),
- LV('Total recall',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(4,420,.5)},'Four modules.',{memo:2500},{hide:2500}),
+ LV('Total recall',130,10,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),pulse:P(6,.5)},'Four modules.',{memo:2500},{hide:2500}),
  LV('Flash',75,10,{wires:W([5,7],W2,3),keys:K(6,5,0,.5)},'Shorter glimpses.',undefined,{hide:2000}),
- LV('Ghost',90,10,{button:B(BALL,18,1.4,1.8),dial:D(1000),pulse:P(4,400,.5)},'Three modules.',undefined,{hide:2000}),
+ LV('Ghost',90,10,{button:B(BALL,18,1.4,1.8),dial:D(1000),pulse:P(6,.5)},'Three modules.',undefined,{hide:2000}),
  LV('Mind palace',125,12,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),switches:SW(5,.5),dial:D(1000)},'Six-digit code.',{len:6,memo:2000},{hide:2000}),
- LV('Fading',120,12,{button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5)},'Faster.',{memo:2000},{hide:1800}),
+ LV('Fading',120,12,{button:B(BALL,16,1.3,1.6),keys:K(6,5,0,.5),pulse:P(7,.5),switches:SW(5,.5)},'Faster.',{memo:2000},{hide:1800}),
  LV('Amnesia',115,15,{wires:W([6,7],W2,3),button:B(BALL,16,1.3,1.6),switches:SW(5,.5),dial:D(900)},'Boss level.',{len:6,memo:1800},{hide:1500,boss:1}),
  // ── World 6 · Sudden death: on 💀 levels one mistake sets it off
  LV('Sudden death',60,0,{wires:W([5,7],W2,2)},'One mistake and it blows.',undefined,{sd:1}),
  LV('Steady',50,0,{button:B(BALL,24,1.6)},'Steady hands.',undefined,{sd:1}),
  LV('Careful',80,0,{keys:K(6,5,0,.5),switches:SW(5,.5)},'Take your time.',undefined,{sd:1}),
- LV('Breather',120,10,{wires:W([5,7],W2,2),button:B(BALL,18,1.4,1.8),pulse:P(4,400,.5),dial:D(1000)},'Mistakes cost time again.',{len:4}),
- LV('Knife edge',90,0,{dial:D(1200),pulse:P(4,420,.5)},'Dial + Pulse.',undefined,{sd:1}),
+ LV('Breather',120,10,{wires:W([5,7],W2,2),button:B(BALL,18,1.4,1.8),pulse:P(6,.5),dial:D(1000)},'Mistakes cost time again.',{len:4}),
+ LV('Knife edge',90,0,{dial:D(1200),pulse:P(6,.5)},'Dial + Pulse.',undefined,{sd:1}),
  LV('No second chances',110,0,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5)},'Three modules.',undefined,{sd:1}),
- LV('Second wind',120,12,{keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5),dial:D(900)},'Vanishing again.',{len:6,memo:2200},{hide:2200}),
+ LV('Second wind',120,12,{keys:K(6,5,0,.5),pulse:P(7,.5),switches:SW(5,.5),dial:D(900)},'Vanishing again.',{len:6,memo:2200},{hide:2200}),
  LV('Hair trigger',150,0,{wires:W([5,7],W2,2),button:B(BALL,20,1.5,2),keys:K(6,5,0,.5),switches:SW(5,.5)},'Four modules.',{len:4},{sd:1}),
- LV('Cold sweat',140,0,{button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(4,400,.5),dial:D(1000)},'Six-digit code.',{len:6},{sd:1}),
+ LV('Cold sweat',140,0,{button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),pulse:P(6,.5),dial:D(1000)},'Six-digit code.',{len:6},{sd:1}),
  LV("Dead man's switch",150,0,{wires:W([6,7],W2,3),button:B(BALL,18,1.4,1.8),switches:SW(5,.5),dial:D(900)},'Boss level.',{len:6},{sd:1,boss:1})];
 // ── World 7 · Gauntlet (81–100): every module type in rotating sets of four, tightening to level 100
 {
   const SETS=[['wires','button','keys','pulse'],['switches','dial','wires','keys'],['button','pulse','switches','dial'],['wires','keys','dial','switches'],['pulse','button','wires','dial'],['keys','switches','pulse','button']];
-  const MID={wires:W([5,7],W2,3),button:B(BALL,16,1.3,1.8),keys:K(6,5,0,.5),pulse:P(5,380,.5),switches:SW(5,.5),dial:D(900)};
-  const HARD={wires:W([6,7],W2,3),button:B(BALL,13,1.15,1.5),keys:K(6,5,1600,.5),pulse:P(5,320,.5),switches:SW(5,.5,1500),dial:D(750)};
+  const MID={wires:W([5,7],W2,3),button:B(BALL,16,1.3,1.8),keys:K(6,5,0,.5),pulse:P(7,.5),switches:SW(5,.5),dial:D(900)};
+  const HARD={wires:W([6,7],W2,3),button:B(BALL,13,1.15,1.5),keys:K(6,5,1600,.5),pulse:P(8,.5),switches:SW(5,.5,1500),dial:D(750)};
   const NAMES=['Gauntlet','Overdrive','Pressure cooker','Live wire','Hot seat','Countdown','Redline','Zero hour','Meltdown','Ground zero',
     'Afterburn','Tripwire','Crossfire','Deadline','Firewall','Fuse box','Last stand','No return','Final countdown','Master'];
   const SD=new Set([84,88,93,97]);
@@ -490,10 +492,10 @@ function makeDial(cfg){const target=rnd(10);let val;do{val=rnd(10)}while(Math.mi
 function newGame(){
   const L=LEVELS[lvl],M=L.mods;PENALTY=L.pen*1000;
   GT.forEach(clearTimeout);GT=[];
-  const pc=M.pulse||P(3);
+  const pc=M.pulse||P(5);
   G={lvl:L,active:ORDER.filter(k=>M[k]),left:L.time*1000,strikes:0,over:false,solved:new Set(),hid:{},
     w:makeWires(M.wires||W([3,6],WALL)),btn:makeButton(M.button||B(BALL)),keys:makeKeys(M.keys||K(4,4)),
-    pulse:{seq:Array.from({length:pc.stages},()=>pick(PC)),stage:1,idx:0,of:pc.stages,ms:pc.ms,rev:Math.random()<pc.rev,watching:false},
+    pulse:{n:pc.taps,hits:0,lit:pick(PC),rev:Math.random()<pc.rev},
     sw:makeSwitches(M.switches||SW(4)),dial:makeDial(M.dial||D())};
   G.code=Array.from({length:(L.final&&L.final.len)||4},()=>rnd(10)).join('');
   G.stage='modules';G.entry='';G.busy=false;G.screws=0;
@@ -531,7 +533,7 @@ const CLUE={
   button(){const Bt=G.btn;$('#c-button').innerHTML=G.solved.has('button')?DONE:G.hid.button?QQ:Bt.kind==='hold'?'HOLD · LET GO IN GREEN':Bt.kind==='taps'?`TAP ×${Bt.left}`:'TAP'},
   keys(){const Kd=G.keys,n=Kd.seq.length,ok=i=>Kd.rev?i>=n-Kd.hits:i<Kd.hits;
     $('#c-keys').innerHTML=G.solved.has('keys')?DONE:(Kd.rev?'<b class="rev">◀</b>':'')+Kd.seq.map((s,i)=>`<span class="sq${ok(i)?' ok':''}">${ok(i)||!G.hid.keys?s:'?'}</span>`).join('')},
-  pulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.watching?'WATCH…':'REPEAT'}${Pd.rev?' <b class="rev">◀</b>':''} <small>${Pd.stage}/${Pd.of}</small>`},
+  pulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.rev?'TAP OPPOSITE <b class="rev">◀</b>':'TAP THE LIT PAD'} <small>${Pd.hits}/${Pd.n}</small>`},
   switches(){const Sd=G.sw;$('#c-switches').innerHTML=G.solved.has('switches')?DONE:(Sd.opp?'<b class="opp">OPPOSITE</b>':'')+(G.hid.switches?QQ:`<span class="arrows">${Sd.show.map(u=>u?'▲':'▼').join('')}</span>`)},
   dial(){$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`TURN TO <b class="big2">${G.hid.dial?'?':G.dial.target}</b> · LOCK`}};
 function drawZone(){const z=G.btn.cur;$('#zone').style.bottom=z[0]+'%';$('#zone').style.height=(z[1]-z[0])+'%'}
@@ -556,7 +558,7 @@ function strike(from){
 }
 function solve(id){
   if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');CLUE[id]();beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
-  if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,700);else defused()}
+  if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,300);else defused()}
 }
 // memory: show a module's instruction, then blank it after the level's hide time (or the module's own memo time)
 function hideTime(id){const L=G.lvl;return id==='keys'?G.keys.memo||L.hide||0:id==='switches'?G.sw.memo||L.hide||0:id==='pulse'?0:L.hide||0}
@@ -823,7 +825,7 @@ function loop(prev){
 function start(){
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){ac=null}
   newGame();$('#over').hidden=true;lastTick=-1;resetFX();scrollTo(0,0);
-  const p=performance.now();loop(p);schedFlash(700);
+  const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);
   G.active.forEach(peek);
   if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
 }
@@ -872,31 +874,19 @@ $('#keys').onclick=e=>{
   else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike('keys')}
 };
 
-/* ---------- pulse: watch the flashes, then repeat them (◀ = backwards) ---------- */
-function lightPad(c){document.querySelectorAll('.pad').forEach(p=>p.classList.toggle('lit',p.dataset.c===c))}
+/* ---------- pulse: tap the lit pad, again and again (◀ = tap the opposite pad) ---------- */
+// pads sit in a diamond: red top, blue right, green left, yellow bottom
+const OPP={red:'yellow',yellow:'red',blue:'green',green:'blue'};
+function lightPad(c){document.querySelectorAll('.pad').forEach(p=>{const on=p.dataset.c===c;p.classList.toggle('lit',on);if(on){p.classList.remove('pop');void p.offsetWidth;p.classList.add('pop')}})}
 const TONE={red:330,blue:440,green:550,yellow:660};
-function schedFlash(delay){
-  clearTimeout(flashT);
-  flashT=setTimeout(function run(){
-    if(!G||G.over||G.solved.has('pulse')||!G.active.includes('pulse'))return;
-    const Pd=G.pulse,s=Pd.seq.slice(0,Pd.stage);let i=0;Pd.watching=true;Pd.idx=0;CLUE.pulse();
-    (function step(){
-      if(G.over)return;
-      if(i>=s.length){lightPad(null);Pd.watching=false;CLUE.pulse();flashT=setTimeout(run,5000);return}
-      const c=s[i++];lightPad(c);beep(TONE[c],Pd.ms/1000*.6,'sine',.05);
-      flashT=setTimeout(()=>{lightPad(null);flashT=setTimeout(step,Pd.ms*.45)},Pd.ms);
-    })();
-  },delay);
-}
 $('#pads').onclick=e=>{
-  const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse')||Pd.watching)return;
-  clearTimeout(flashT);lightPad(p.dataset.c);setTimeout(()=>lightPad(null),180);beep(TONE[p.dataset.c],.15,'sine',.06);
-  const want=Pd.rev?Pd.seq[Pd.stage-1-Pd.idx]:Pd.seq[Pd.idx];
+  const p=e.target.closest('.pad'),Pd=G&&G.pulse;if(!p||G.over||G.solved.has('pulse'))return;
+  const want=Pd.rev?OPP[Pd.lit]:Pd.lit;
   if(p.dataset.c===want){
-    Pd.idx++;
-    if(Pd.idx===Pd.stage){Pd.stage++;Pd.idx=0;if(Pd.stage>Pd.of){Pd.stage=Pd.of;solve('pulse');return}CLUE.pulse();schedFlash(800);return}
-    schedFlash(5000);
-  }else{Pd.idx=0;strike('pulse');if(!G.over)schedFlash(1000)}
+    Pd.hits++;beep(TONE[p.dataset.c]+Pd.hits*20,.08,'sine',.06);
+    if(Pd.hits>=Pd.n){lightPad(null);solve('pulse');return}
+    Pd.lit=pick(PC.filter(c=>c!==Pd.lit));lightPad(Pd.lit);CLUE.pulse();
+  }else{p.classList.remove('bad');void p.offsetWidth;p.classList.add('bad');strike('pulse')}
 };
 
 /* ---------- switches: flip each one to match the arrows (OPPOSITE = the other way) ---------- */
@@ -928,7 +918,7 @@ function openCover(){
   if(G.over)return;G.stage='final';
   const mods=$('.mods');mods.classList.add('lift');
   try{if(ac){noiseBurst(ac.currentTime,.7,6000,800,.25,1.2);beep(70,.25,'square',.08)}}catch(e){}
-  setTimeout(()=>{if(G.stage!=='final')return;mods.hidden=true;$('#m-final').hidden=false;beep(220,.12,'square',.05)},900);
+  setTimeout(()=>{if(G.stage!=='final')return;mods.hidden=true;$('#m-final').hidden=false;beep(220,.12,'square',.05)},600);
 }
 function showCode(){
   const c=$('#codeShow'),m=G.lvl.final&&G.lvl.final.memo;c.textContent=G.code;c.classList.remove('gone');
