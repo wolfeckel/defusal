@@ -1,0 +1,13 @@
+{
+  "name": "defusal",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Defusal — a bomb-defusal training game in a single HTML file",
+  "scripts": {
+    "dev": "live-server --port=5173 --open=index.html",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
