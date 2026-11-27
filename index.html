@@ -257,7 +257,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
   font:700 17px "Barlow Condensed",sans-serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .me[hidden]{display:none}.me:active{transform:translateY(3px);box-shadow:0 1px 0 #15181b}.me:focus-visible{outline:3px solid #fff}
 .me small{color:#9aa2a9;font-weight:400;margin-left:4px}
-.hud{min-height:46px}.hud h1{padding-left:110px}
+.hud{min-height:46px}.hud h1{padding-left:162px}
 .over{padding-top:72px}
 .board{list-style:none;margin:0 0 18px;padding:0;text-align:left;display:flex;flex-direction:column;gap:6px}
 .board[hidden]{display:none}
@@ -307,6 +307,9 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 /* shuffle */
 .mod.shuf{animation:shuf .35s ease-out}@keyframes shuf{from{transform:scale(.9);opacity:.4}}
 /* daily bomb button on the map */
+.lvnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px}
+.lvnav .kicker{margin:0;min-width:0}
+.lvnav .ib{width:40px;height:40px;font-size:18px}.lvnav .ib:disabled{opacity:.25;cursor:default}
 .maptop{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 14px}
 .maptop .cta{width:100%;min-height:56px;font-size:20px;padding:10px 8px}
 .cta.dly{background:#1f5134;color:#d9ffe6;box-shadow:0 6px 0 #0f2a1b}
@@ -359,7 +362,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Levels">☰</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
+<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="levels" aria-label="Levels">☰</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"><button class="me" id="me" hidden></button></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -939,17 +942,19 @@ function showOver(m,why){
   if(m==='map')daily=false;
   mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'SAVE':'PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
-  if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
+  if(m==='brief'){const k=daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`;
+    top=daily?kick(k):`<div class="lvnav"><button class="ib" id="prevLv" aria-label="Previous level"${lvl<=0?' disabled':''}>◀</button>${kick(k)}<button class="ib" id="nextLv2" aria-label="Next level"${lvl>=Math.min(prof().unlocked,LEVELS.length-1)?' disabled':''}>▶</button></div>`;
+    title=L.t;text=L.intro;
     chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'')
       +(L.chain?chip('🔗 IN ORDER'):'')+(L.shuffle?chip('🔀 SHUFFLE'):'')+(L.decoy?chip('🎭 DECOY'):'');go='PLAY'}
   if(m==='win'){const r=G.result;top=kick(daily?'Daily bomb defused':last?'Grandmaster':`Level ${n} cleared`)+starHTML(r.stars);
     title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
     text=last?`All ${LEVELS.length} levels defused.`:'';
-    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=daily?'TODAY’S BOARD':last?'ALL LEVELS':'NEXT ▶'}
-  if(m==='lose'){top=kick(daily?'Daily bomb':`Level ${n}`);title='BOOM';text=why;go='RETRY'}
+    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=daily?'TODAY’S BOARD':last?'ALL LEVELS':`NEXT ▶ LEVEL ${n+1}`}
+  if(m==='lose'){lastWhy=why;top=kick(daily?'Daily bomb':`Level ${n}`);title='BOOM';text=why;go='RETRY'}
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
@@ -967,16 +972,19 @@ function openDaily(){daily=true;DAILY=buildDaily(todayKey());preview();showOver(
 $('#oTop').onclick=e=>{
   if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}
   if(e.target.closest('#nextLv')){audioOn();SFX.click(1400);toBrief(Math.min(prof().unlocked,LEVELS.length-1))}
+  const pv=e.target.closest('#prevLv:not([disabled])'),nx=e.target.closest('#nextLv2:not([disabled])');
+  if(pv||nx){audioOn();SFX.ratchet();toBrief(lvl+(nx?1:-1))}
 };
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
   if(mode==='name'){
     const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
-    S.current=v;const P=prof();save();
+    const changing=!!S.current;S.current=v;const P=prof();save();
+    if(changing){showOver('map');return}
     toBrief(Math.min(P.unlocked,LEVELS.length-1));return}
   if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
   if(mode==='board'){goBack();return}
-  if(mode==='win'&&daily){boardFrom='map';boardTab='daily';showOver('board');return}
+  if(mode==='win'&&daily){boardOrigin=snap();boardTab='daily';showOver('board');return}
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
@@ -988,27 +996,42 @@ $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief
 // ☰ during play: abandon the level and go to the map
 /* ---------- top bar: ← back · 🏆 leaderboard · 🔊 mute ---------- */
 // back is "up one level": mid-level → that level's briefing; leaderboard → where it was opened; everything else → the map
-let boardFrom='map';
+/* ---------- navigation ----------
+   ☰ is home (the level map). The level flow runs map → briefing → play → win/lose → next briefing.
+   ← appears only when "back" means something other than home: mid-level (→ that briefing), and on the
+   leaderboard / change-name screens (→ exactly where they were opened from, win and lose screens included). */
+let boardOrigin=null,nameOrigin=null,lastWhy='';
 const playing=()=>$('#over').hidden;
+const snap=()=>({mode,lvl,daily,why:lastWhy});
+function backTo(){
+  if(playing())return 'brief';
+  const o=mode==='board'?boardOrigin:mode==='name'&&S.current?nameOrigin:null;
+  return o&&o.mode!=='map'?o:null;
+}
+function stopRun(){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}}
+function restore(o){daily=o.daily;lvl=o.lvl;if(o.mode==='brief'){daily?openDaily():toBrief(lvl);return}showOver(o.mode,o.why)}
+function goHome(){stopRun();resetFX();showOver('map')}
 function drawTop(){
-  $('#back').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
+  $('#back').hidden=!backTo();
+  $('#levels').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
   $('#trophy').hidden=playing()||!lbOn()||mode==='board';
   $('#restart').hidden=!playing();
   const me=$('#me');me.hidden=playing()||mode==='name'||!S.current;
   if(!me.hidden){me.innerHTML=`👤 ${esc(S.current)}<small>✎</small>`;me.setAttribute('aria-label',`Playing as ${S.current}. Change name`)}
 }
 function goBack(){
-  const reBrief=()=>daily?openDaily():toBrief(lvl);
-  if(playing()){if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}reBrief();return}
-  if(mode==='board'&&boardFrom==='brief'){reBrief();return}
-  showOver('map');
+  const t=backTo();
+  if(t==='brief'){stopRun();daily?openDaily():toBrief(lvl);return}
+  if(t){restore(t);return}
+  goHome();
 }
-// ☰ Levels: straight to the level map from anywhere (mid-level it abandons the attempt)
-$('#back').onclick=()=>{audioOn();SFX.click(1000);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}resetFX();showOver('map')};
+$('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
+// ☰ Levels: home, from anywhere (mid-level it abandons the attempt)
+$('#levels').onclick=()=>{audioOn();SFX.click(1000);goHome()};
 // ↻ mid-level: throw this attempt away and start the same level again
-$('#me').onclick=()=>{audioOn();SFX.click(1400);showOver('name')};
+$('#me').onclick=()=>{audioOn();SFX.click(1400);nameOrigin=snap();showOver('name')};
 $('#restart').onclick=()=>{audioOn();SFX.click(1200);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}start()};
-$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab='all';showOver('board')};
+$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardOrigin=snap();boardLvl=lvl;boardTab='all';showOver('board')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -1385,7 +1408,7 @@ if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
 // reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
 let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
 preview();showOver(S.current?'brief':'name');submitScore();submitTimes();submitDaily();
-if(wasBoard&&S.current&&lbOn()){boardFrom='map';boardLvl=lvl;boardTab='all';showOver('board')}
+if(wasBoard&&S.current&&lbOn()){boardOrigin=null;boardLvl=lvl;boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
 $('#mute').onclick=()=>{S.muted=!S.muted;save();if(master)master.gain.value=S.muted?0:1;else audioOn();drawMute();SFX.click(1400)};drawMute();
