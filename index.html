@@ -235,6 +235,8 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .needle{position:absolute;left:50%;top:16%;width:6px;height:34%;margin-left:-3px;border-radius:3px;background:var(--red);box-shadow:0 0 8px rgba(255,59,47,.6);transform-origin:50% 100%;transition:transform .15s}
 .hub{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:#1b1e21}
 .drow{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:6px;width:100%}
+.drow.one{grid-template-columns:1fr}.drow.one .dbtn{min-height:52px;font-size:20px}
+.dir{color:#f2c230;text-shadow:0 0 8px rgba(242,194,48,.6)}
 .dbtn{min-height:44px;border:0;border-radius:10px;background:#1f2327;color:#e8eaec;font:20px system-ui,sans-serif;box-shadow:0 4px 0 #0d0f11;cursor:pointer}
 .dbtn.lock{background:#1f5134;font:800 16px "Barlow Condensed",sans-serif;letter-spacing:.06em}
 .dbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0d0f11}.dbtn:focus-visible{outline:3px solid #fff}
@@ -325,7 +327,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="mod" id="m-pulse"><span class="led"></span><div class="clue" id="c-pulse" aria-live="polite"></div><div class="pads" id="pads"></div></div>
     <div class="mod" id="m-switches"><span class="led"></span><div class="clue" id="c-switches" aria-live="polite"></div><div class="sws" id="sws"></div></div>
     <div class="mod" id="m-dial"><span class="led"></span><div class="clue" id="c-dial" aria-live="polite"></div>
-      <div class="dialw"><div class="dial" id="dial"></div><div class="drow"><button class="dbtn" data-d="-1" aria-label="Turn left">◀</button><button class="dbtn lock" data-d="0">LOCK</button><button class="dbtn" data-d="1" aria-label="Turn right">▶</button></div></div></div>
+      <div class="dialw"><div class="dial" id="dial"></div><div class="drow one"><button class="dbtn lock" data-d="0">SET</button></div></div></div>
     <div class="mod" id="m-slider"><span class="led"></span><div class="clue" id="c-slider" aria-live="polite"></div><div class="sliders" id="sliders"></div></div>
     <div class="mod decoy" id="m-decoy" hidden><span class="led"></span><div class="clue" id="c-decoy"></div><div class="decoyw"><button class="big" id="dbig" aria-label="Decoy button">PUSH</button></div></div>
   </div>
@@ -350,7 +352,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 </section>
 </div>
 </div>
-<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><span class="sp"></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
+<nav class="topbar" aria-label="Navigation"><button class="ib" id="back" aria-label="Back">←</button><button class="ib" id="restart" aria-label="Restart level" hidden>↻</button><span class="sp"></span><button class="ib" id="trophy" aria-label="Leaderboard">🏆</button><button class="ib" id="mute" aria-label="Sound on">🔊</button></nav>
 <div class="over" id="over">
   <div>
     <div id="oTop"></div>
@@ -485,10 +487,10 @@ const LEVELS=[
  LV('Four-way',120,10,{wires:W([5,7],W2,2),keys:K(6,5,0,.5),pulse:P(6,.5),switches:SW(5,.5)},'Four modules.',{len:4}),
  LV('Switchboard',110,12,{wires:W([5,7],W2,3),button:B(BALL,18,1.4,1.8),keys:K(6,5,0,.5),switches:SW(5,.5,1800)},'Boss level.',{len:6},{boss:1}),
  // ── World 4 · Dial
- LV('Dial',40,5,{dial:D()},'New: the Dial. Turn it, then LOCK.'),
+ LV('Dial',40,5,{dial:D()},'New: the Dial. Press SET when the hand lands on the number.'),
  LV('Tune in',35,5,{dial:D()},'Quicker.'),
- LV('Drift',40,5,{dial:D(1500)},'It drifts back. Be quick.'),
- LV('Strong drift',40,8,{dial:D(900)},'Faster drift.'),
+ LV('Before or after',40,5,{dial:D(1500)},'BEFORE: one tick early. AFTER: one tick late.'),
+ LV('Fast hand',40,8,{dial:D(900)},'The hand moves faster.'),
  LV('Dial and flip',60,8,{dial:D(1200),switches:SW(5,.5)},'Dial + Switches.'),
  LV('Dial and pulse',70,8,{dial:D(1200),pulse:P(6,.5)},'Dial + Pulse.'),
  LV('Dial and key',70,10,{dial:D(1000),keys:K(6,5,1800,.5)},'Dial + Keypad.'),
@@ -668,7 +670,14 @@ function makeSwitches(cfg){
   do{state=Array.from({length:n},()=>RNG()<.5)}while(state.filter((s,i)=>s!==target[i]).length<Math.min(2,n));
   return{n,show,opp,target,state,memo:cfg.memo};
 }
-function makeDial(cfg){const target=rnd(10);let val;do{val=rnd(10)}while(Math.min((val-target+10)%10,(target-val+10)%10)<3);return{target,val,home:val,ang:val*36,drift:cfg.drift}}
+// dial: the hand ticks one number at a time, clockwise (+1) or anticlockwise (-1), at a steady pace.
+// The screen asks for the number itself (ON), or on harder levels the tick just BEFORE or AFTER it.
+// D() is gentle: 0.9s per tick, ON only. D(ms) levels tick faster (60% of ms, never under 0.45s) and add BEFORE/AFTER.
+function makeDial(cfg){
+  const dir=RNG()<.5?1:-1,target=rnd(10),rel=cfg.drift?pick(['on','before','after']):'on',want=rel==='on'?target:(target+(rel==='before'?-dir:dir)+10)%10;
+  const val=(want-dir*(4+rnd(4))+20)%10;                    // starts 4–7 ticks away from the answer
+  return{target,rel,want,dir,val,ang:val*36,tick:cfg.drift?Math.max(450,Math.round(cfg.drift*.6)):900};
+}
 // slider: drag each one to its number and let go; on moving levels the number creeps while you work
 function makeSlider(cfg){return{move:cfg.move,items:Array.from({length:cfg.n},()=>{const target=rnd(10);let val;do{val=rnd(10)}while(Math.abs(val-target)<3);return{target,val,done:false,at:0}})}}
 
@@ -727,7 +736,7 @@ const CLUE={
     $('#c-keys').innerHTML=G.solved.has('keys')?DONE:(Kd.rev?'<b class="rev">◀</b>':'')+Kd.seq.map((s,i)=>`<span class="sq${ok(i)?' ok':''}">${ok(i)||!G.hid.keys?s:'?'}</span>`).join('')},
   pulse(){const Pd=G.pulse;$('#c-pulse').innerHTML=G.solved.has('pulse')?DONE:`${Pd.rev?'TAP OPPOSITE <b class="rev">◀</b>':'TAP THE LIT PAD'} <small>${Pd.hits}/${Pd.n}</small>`},
   switches(){const Sd=G.sw;$('#c-switches').innerHTML=G.solved.has('switches')?DONE:(Sd.opp?'<b class="opp">OPPOSITE</b>':'')+(G.hid.switches?QQ:`<span class="arrows">${Sd.show.map(u=>u?'▲':'▼').join('')}</span>`)},
-  dial(){$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`TURN TO <b class="big2">${G.hid.dial?'?':G.dial.target}</b> · LOCK`},
+  dial(){const Dd=G.dial;$('#c-dial').innerHTML=G.solved.has('dial')?DONE:`<b class="dir">${Dd.dir>0?'↻':'↺'}</b> SET ${Dd.rel==='on'?'ON':Dd.rel==='before'?'BEFORE':'AFTER'} <b class="big2">${G.hid.dial?'?':Dd.target}</b>`},
   slider(){const Sl=G.sl,two=Sl.items.length>1;$('#c-slider').innerHTML=G.solved.has('slider')?DONE:Sl.items.map((s,i)=>`${two?'AB'[i]+' →':'SLIDE TO'} <b class="big2">${s.done?'✓':G.hid.slider?'?':s.target}</b>`).join('<span class="sep">·</span>')}};
 // decoy: pretends to be a real module, then shows DECOY · DON'T TOUCH
 function drawDecoy(){const d=G.decoy;if(!d)return;$('#m-decoy').classList.toggle('revealed',d.revealed);$('#c-decoy').textContent=d.revealed?'DECOY · DON’T TOUCH':d.fake}
@@ -770,6 +779,7 @@ function hideTime(id){const L=G.lvl;return id==='keys'?G.keys.memo||L.hide||0:id
 function peek(id){
   const t=hideTime(id);if(!t||G.solved.has(id))return;
   G.hid[id]=false;CLUE[id]();clearTimeout(G['ht_'+id]);
+  if(id==='keys'&&!G.keysTouched)return;   // keypad symbols stay up until the player first touches the keypad
   G['ht_'+id]=setTimeout(()=>{if(G.over||G.solved.has(id))return;G.hid[id]=true;CLUE[id]()},t);GT.push(G['ht_'+id]);
 }
 // stop the clock right away, then show the win screen
@@ -973,6 +983,7 @@ const playing=()=>$('#over').hidden;
 function drawTop(){
   $('#back').hidden=!playing()&&(mode==='map'||(mode==='name'&&!S.current));
   $('#trophy').hidden=playing()||!lbOn()||mode==='board';
+  $('#restart').hidden=!playing();
 }
 function goBack(){
   const reBrief=()=>daily?openDaily():toBrief(lvl);
@@ -981,6 +992,8 @@ function goBack(){
   showOver('map');
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
+// ↻ mid-level: throw this attempt away and start the same level again
+$('#restart').onclick=()=>{audioOn();SFX.click(1200);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}start()};
 $('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab='all';showOver('board')};
 
 /* ---------- explosion ---------- */
@@ -1168,7 +1181,7 @@ function start(){
   newGame();$('#over').hidden=true;drawTop();lastTick=-1;resetFX();scrollTo(0,0);
   const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
-  if(G.active.includes('dial')&&G.dial.drift)gl(G.dial.drift,driftDial);
+  if(G.active.includes('dial'))gl(G.dial.tick,marchDial);
   if(G.active.includes('slider')&&G.sl.move)gl(G.sl.move,moveSlider);
   if(G.decoy&&!G.decoy.revealed)gl(G.decoy.late,()=>{if(G.over)return;G.decoy.revealed=true;drawDecoy();beep(260,.1,'square',.05)});
   if(G.chain)peekChain();
@@ -1215,6 +1228,7 @@ big.addEventListener('contextmenu',e=>e.preventDefault());
 /* ---------- keypad: press the symbols in the order shown (◀ = reverse) ---------- */
 $('#keys').onclick=e=>{
   const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit')||!allowed('keys'))return;
+  if(!G.keysTouched){G.keysTouched=true;peek('keys')}
   const Kd=G.keys,want=Kd.rev?Kd.seq[Kd.seq.length-1-Kd.hits]:Kd.seq[Kd.hits];
   if(k.dataset.s===want){k.classList.add('hit');Kd.hits++;SFX.key(Kd.hits);if(Kd.hits===Kd.seq.length)solve('keys');else{CLUE.keys();if(G.lvl.shuffle==='all')shuffleEls('#keys .key')}}
   else{k.classList.remove('bad');void k.offsetWidth;k.classList.add('bad');strike('keys')}
@@ -1244,18 +1258,15 @@ $('#sws').onclick=e=>{
   if(Sd.state.every((u,j)=>u===Sd.target[j]))solve('switches');
 };
 
-/* ---------- dial: turn to the number, then LOCK (on drift levels it creeps back) ---------- */
-function turnDial(d){const Dd=G.dial;Dd.val=(Dd.val+d+10)%10;Dd.ang+=d*36;drawDial()}
-function driftDial(){
+/* ---------- dial: the hand marches steadily; press SET when it's on the right number ---------- */
+function marchDial(){
   if(!G||G.over||G.solved.has('dial'))return;const Dd=G.dial;
-  if(Dd.val!==Dd.home){const fwd=(Dd.home-Dd.val+10)%10;turnDial(fwd<=5?1:-1);SFX.ratchet(.08)}
-  gl(Dd.drift,driftDial);
+  Dd.val=(Dd.val+Dd.dir+10)%10;Dd.ang+=Dd.dir*36;drawDial();SFX.ratchet(.08);
+  gl(Dd.tick,marchDial);
 }
 $('#m-dial').addEventListener('click',e=>{
   const b=e.target.closest('.dbtn');if(!b||!G||G.over||G.solved.has('dial')||!allowed('dial'))return;
-  const d=+b.dataset.d;
-  if(d){turnDial(d);SFX.ratchet();return}
-  if(G.dial.val===G.dial.target){SFX.thunk();solve('dial')}else strike('dial');
+  if(G.dial.val===G.dial.want){SFX.thunk();solve('dial')}else strike('dial');
 });
 
 /* ---------- slider: drag to the number and let go ---------- */
