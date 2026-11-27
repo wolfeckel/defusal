@@ -274,6 +274,9 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .chip.rec{background:#3a2f0a;color:#f2c230}
 .chip.xl{font-size:28px;padding:10px 18px}
 .cta.spin{animation:spinpress .6s}@keyframes spinpress{30%{transform:scale(.96)}}
+#ranks{margin-top:-12px}
+.chip.rank{background:#1f5134;color:#d9ffe6;animation:pop .4s cubic-bezier(.2,1.7,.4,1)}
+.chip .up{color:#46ff8a;font-weight:400}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -327,6 +330,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <h2 id="oTitle"></h2>
     <p id="oText"></p>
     <div class="chips" id="chips"></div>
+    <div class="chips" id="ranks" aria-live="polite"></div>
     <div class="row" id="nameRow" style="margin-bottom:16px" hidden><input class="name" id="name" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Your name"></div>
     <div class="lvls" id="lvls" aria-label="Levels" hidden></div>
     <div class="btabs" id="btabs" role="tablist" hidden><button role="tab" data-t="all">Overall</button><button role="tab" data-t="fast">Fastest</button></div>
@@ -644,12 +648,18 @@ function end(win,why){
     if(betterStars){nb.s=stars;nb.t=left}
     if(pb){nb.ms=ms;(P.pend=P.pend||{})[lvl]=ms}
     P.best[lvl]=nb;const res=G.result={stars,ms,beat:betterStars||(pb&&!!(b&&b.ms))};
-    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();submitScore();
+    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();const sent=submitScore();
     showOver('win');celebrate();
-    // a new personal best might be the fastest anyone has done this level
-    if(pb&&lbOn()){const i=lvl;submitTimes().then(()=>lbCall('top_times',{p_level:i+1,n:1})).then(t=>{
-      if(mode==='win'&&G.result===res&&t&&t[0]&&t[0].ms===ms&&t[0].name===S.current.trim().slice(0,20)){
-        $('#chips').insertAdjacentHTML('beforeend',chip('🏆 NEW RECORD!','hot'));[1046,1318,1568,2093].forEach((f,k)=>setTimeout(()=>beep(f,.14,'triangle',.07),k*90))}}).catch(()=>{})}
+    // once saved, show where this puts the player: overall rank (with movement) and rank on this level's fastest times
+    if(lbOn()){const i=lvl,id=pid();Promise.all([sent,submitTimes()])
+      .then(()=>Promise.all([lbCall('my_rank',{p_id:id}),lbCall('my_time',{p_id:id,p_level:i+1})]))
+      .then(([rank,mine])=>{
+        if(mode!=='win'||G.result!==res)return;
+        const lt=mine&&mine[0],add=x=>$('#ranks').insertAdjacentHTML('beforeend',x),record=pb&&lt&&lt.pos===1;
+        if(record){add(chip('🏆 NEW RECORD!','hot'));[1046,1318,1568,2093].forEach((f,k)=>setTimeout(()=>beep(f,.14,'triangle',.07),k*90))}
+        if(rank){const was=P.rank,up=was&&rank<was?was-rank:0;P.rank=rank;save();add(chip(`🏅 #${rank} overall${up?` <b class="up">▲${up}</b>`:''}`,'rank'))}
+        if(lt&&!record)add(chip(`⚡ #${lt.pos} on level ${i+1}`,'rank'));
+      }).catch(()=>{})}
     [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120));
     for(let i=0;i<stars;i++)setTimeout(()=>beep(1046+i*260,.12,'triangle',.07),650+i*250);
   }
@@ -673,8 +683,8 @@ const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xx
 function pid(){const P=prof();if(!P.id){P.id=uuid();save()}return P.id}
 // send this player's totals (the server only ever keeps the better numbers)
 function submitScore(){
-  if(!lbOn()||!S.current)return;const t=totals(prof());if(!t.levels)return;
-  lbCall('submit_score',{p_id:pid(),p_name:S.current,p_levels:t.levels,p_stars:t.stars,p_total_ms:Math.round(t.ms)}).catch(()=>{});
+  if(!lbOn()||!S.current)return Promise.resolve();const t=totals(prof());if(!t.levels)return Promise.resolve();
+  return lbCall('submit_score',{p_id:pid(),p_name:S.current,p_levels:t.levels,p_stars:t.stars,p_total_ms:Math.round(t.ms)}).catch(()=>{});
 }
 // personal-best times wait in P.pend until the server has them, so a time set offline is sent later
 function submitTimes(){
@@ -756,7 +766,7 @@ function showOver(m,why){
   const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board';alt.textContent=m==='board'?'↻ Refresh':'↻ Replay';
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#ranks').innerHTML='';$('#go').textContent=go;o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
   // on the map, scroll the current level into view
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
