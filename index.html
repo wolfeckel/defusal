@@ -307,7 +307,10 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 /* shuffle */
 .mod.shuf{animation:shuf .35s ease-out}@keyframes shuf{from{transform:scale(.9);opacity:.4}}
 /* daily bomb button on the map */
-.cta.dly{display:block;width:100%;margin:6px 0 14px;background:#1f5134;color:#d9ffe6;box-shadow:0 6px 0 #0f2a1b}
+.maptop{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 14px}
+.maptop .cta{width:100%;min-height:56px;font-size:20px;padding:10px 8px}
+.cta.dly{background:#1f5134;color:#d9ffe6;box-shadow:0 6px 0 #0f2a1b}
+.cta[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.mods.lift,.vault,.screw.out{animation-duration:.01s}.device.shake,.device.rattle,body.quake .wrap,.lcd.panic,#vig.alarm{animation:none}*{transition:none!important}}
 </style>
 </head>
@@ -938,7 +941,7 @@ function showOver(m,why){
   let top='',title='',text='',chips='',go='',link='';
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;if(lbOn())text='Your name appears on the online leaderboard.'}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
-    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+'<button class="cta dly" id="dly">📅 Daily bomb</button>';title='Levels';go=`▶ LEVEL ${Math.min(P.unlocked,LEVELS.length-1)+1}`;drawLvls()}
+    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
     chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'')
       +(L.chain?chip('🔗 IN ORDER'):'')+(L.shuffle?chip('🔀 SHUFFLE'):'')+(L.decoy?chip('🎭 DECOY'):'');go='PLAY'}
@@ -953,7 +956,7 @@ function showOver(m,why){
   const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board';alt.textContent=m==='board'?'↻ Refresh':'↻ Replay';
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#ranks').innerHTML='';$('#go').textContent=go;o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#ranks').innerHTML='';$('#go').textContent=go;$('#go').hidden=m==='map';o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
   // on the map, scroll the current level into view
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
@@ -961,7 +964,10 @@ function showOver(m,why){
 function preview(){resetFX();newGame();G.over=true}
 const toBrief=i=>{daily=false;lvl=i;preview();showOver('brief')};
 function openDaily(){daily=true;DAILY=buildDaily(todayKey());preview();showOver('brief')}
-$('#oTop').onclick=e=>{if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}};
+$('#oTop').onclick=e=>{
+  if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}
+  if(e.target.closest('#nextLv')){audioOn();SFX.click(1400);toBrief(Math.min(prof().unlocked,LEVELS.length-1))}
+};
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
   if(mode==='name'){
