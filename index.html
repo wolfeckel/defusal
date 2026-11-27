@@ -630,7 +630,7 @@ function end(win,why){
 /* ---------- online leaderboard (Supabase) ---------- */
 // Fill these in from Supabase → Project Settings → API. Both are safe to publish: the key can only call the
 // three functions in supabase/leaderboard.sql, never read or edit the scores table directly.
-const LB={url:'',key:''};
+const LB={url:'https://uhkkzzfbcchhcalmucwh.supabase.co',key:'sb_publishable_jgTVMc_t4Iq3CPqx8-3tpA_XjXtqG4C'};
 const lbOn=()=>!!(LB.url&&LB.key);
 function lbCall(fn,body){
   const h={apikey:LB.key,'Content-Type':'application/json'};if(LB.key.startsWith('eyJ'))h.Authorization='Bearer '+LB.key;
