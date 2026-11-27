@@ -756,7 +756,7 @@ function showOver(m,why){
   const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board';alt.textContent=m==='board'?'↻ Refresh':'↻ Replay';
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
   const w=$('#who');w.hidden=!link;w.textContent=link;
-  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();if(m==='board')drawBoard();if(m==='brief')drawRecord();
+  $('#oTop').innerHTML=top;$('#oTitle').textContent=title;$('#oText').textContent=text;$('#chips').innerHTML=chips;$('#go').textContent=go;o.hidden=false;drawTop();try{sessionStorage.setItem('defusal.screen',m==='board'?'board':'')}catch(e){}if(m==='board')drawBoard();if(m==='brief')drawRecord();
   (m==='name'?$('#name'):$('#go')).focus({preventScroll:true});
   // on the map, scroll the current level into view
   if(m==='map'){o.scrollTop=0;const c=$('.lv.cur')||$('.lv:not([disabled]):last-of-type');if(c)c.scrollIntoView({block:'center'})}
@@ -794,7 +794,7 @@ function goBack(){
   showOver('map');
 }
 $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
-$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab=boardFrom==='brief'?'fast':'all';showOver('board')};
+$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardFrom=mode==='brief'?'brief':'map';boardLvl=lvl;boardTab='all';showOver('board')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -1111,7 +1111,10 @@ $('#plate').onclick=e=>{
 
 /* start: name screen for new players, otherwise the next level's briefing */
 if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
+// reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
+let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
 preview();showOver(S.current?'brief':'name');submitScore();submitTimes();
+if(wasBoard&&S.current&&lbOn()){boardFrom='map';boardLvl=lvl;boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
 $('#mute').onclick=()=>{S.muted=!S.muted;save();if(master)master.gain.value=S.muted?0:1;else audioOn();drawMute();SFX.click(1400)};drawMute();
