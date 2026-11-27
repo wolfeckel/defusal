@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Defusal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* VOICE: tense, tactile, a little playful — a training rig on a workbench.
+   IDEA: a defusal training device bolted to a hazard-striped bench, with its field manual clipped beside it.
+   PICTURE: the device itself — gunmetal casing, red LCD timer, four modules — is the whole first screen.
+   COLOUR and TYPE: hazard yellow bench, gunmetal casing, LCD red accent; Barlow Condensed labels, Share Tech Mono readouts.
+   LAYOUT: device left / manual right above 1000px; stacked device then manual below. */
+:root{color-scheme:light dark;
+--bg:light-dark(#f2c230,#17150d);--bg2:light-dark(#e5b41f,#211d10);
+--ink:light-dark(#161616,#efe9d6);--case:#2c3136;--case2:#3a4046;--edge:#4c545c;--plate:#1e2226;
+--paper:light-dark(#ffffff,#24221c);--pink:light-dark(#5c5c5c,#b5ae98);--rule:light-dark(#d9d9d9,#3d3a30);
+--red:#ff3b2f;--lcd:#2a0806;--ok:#3ee07a}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip;
+background-image:repeating-linear-gradient(135deg,transparent 0 46px,rgba(0,0,0,.045) 46px 92px)}
+h1,h2,h3{font-family:"Barlow Condensed",sans-serif;line-height:1.05;margin:0;text-wrap:balance}
+.wrap{max-width:1280px;margin:0 auto;padding:clamp(18px,3vw,40px) max(4vw,14px)}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px 20px;margin-bottom:18px}
+header h1{font-size:clamp(34px,5vw,50px);font-weight:800}
+header p{margin:0;max-width:52ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}
+@media(max-width:1000px){.grid{grid-template-columns:minmax(0,1fr)}}
+/* device */
+.device{background:linear-gradient(160deg,var(--case2),var(--case) 60%);border-radius:22px;padding:16px;position:relative;
+box-shadow:0 2px 0 var(--edge) inset,0 -3px 0 #1a1d20 inset,0 24px 40px -18px rgba(0,0,0,.55),0 6px 0 #15181b}
+.device.shake{animation:shake .4s}
+@keyframes shake{20%{transform:translate(-6px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-4px,1px)}80%{transform:translate(3px,0)}}
+.bolt{position:absolute;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8a939b,#3a4046)}
+.top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:stretch;margin:4px 8px 14px}
+.lcd{background:var(--lcd);border-radius:10px;padding:6px 16px;font:clamp(40px,7vw,58px)/1 "Share Tech Mono",monospace;color:var(--red);
+text-shadow:0 0 12px rgba(255,59,47,.6);box-shadow:inset 0 3px 8px #000;min-width:4.4ch;text-align:center;white-space:nowrap}
+.edge{display:flex;flex-wrap:wrap;gap:8px;align-content:center}
+.tag{background:var(--plate);color:#d6d9dc;border-radius:8px;padding:6px 10px;font:13px/1.2 "Barlow Condensed",sans-serif;letter-spacing:.02em}
+.tag b{display:block;font:18px/1.1 "Share Tech Mono",monospace;color:#fff;white-space:nowrap}
+.strikes{display:flex;gap:6px;align-items:center;background:var(--plate);border-radius:10px;padding:8px 12px}
+.strikes i{width:22px;height:22px;border-radius:50%;background:#46161a;box-shadow:inset 0 2px 4px #000}
+.strikes i.on{background:var(--red);box-shadow:0 0 12px var(--red)}
+.mods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:560px){.mods{grid-template-columns:minmax(0,1fr)}.top{grid-template-columns:minmax(0,1fr) auto}.edge{grid-column:1/-1;order:3}}
+.mod{background:linear-gradient(#41484f,#353b41);border-radius:14px;padding:14px;min-height:250px;position:relative;
+box-shadow:inset 0 1px 0 #5a636c,inset 0 -2px 0 #23272b}
+.mod h3{font-size:16px;font-weight:700;color:#c9ced3;margin-bottom:10px}
+.led{position:absolute;top:14px;right:14px;width:16px;height:16px;border-radius:50%;background:#2b1515;box-shadow:inset 0 2px 3px #000}
+.mod.done .led{background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.mod.done{outline:2px solid rgba(62,224,122,.35)}
+/* wires */
+.wires{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.wire{all:unset;cursor:pointer;display:grid;grid-template-columns:22px minmax(0,1fr) 22px;align-items:center;height:28px;border-radius:6px}
+.wire:focus-visible{outline:2px solid #fff}
+.post{width:16px;height:16px;border-radius:4px;background:#1b1e21;justify-self:center}
+.cable{height:10px;border-radius:5px;position:relative;box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.3)}
+.wire.cut .cable{background-clip:content-box!important;-webkit-mask:linear-gradient(90deg,#000 44%,transparent 44% 56%,#000 56%);mask:linear-gradient(90deg,#000 44%,transparent 44% 56%,#000 56%)}
+.wire:hover:not(.cut) .cable{filter:brightness(1.2)}
+.wire .n{font:12px "Share Tech Mono",monospace;color:#8d959c;text-align:center}
+/* button */
+.btnmod{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:14px;align-items:center;min-height:190px}
+.big{width:min(170px,100%);aspect-ratio:1;border-radius:50%;justify-self:center;border:0;cursor:pointer;
+font:800 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.04em;box-shadow:0 8px 0 rgba(0,0,0,.45),inset 0 -6px 0 rgba(0,0,0,.25),inset 0 4px 0 rgba(255,255,255,.35);transition:transform .06s}
+.big:active,.big.down{transform:translateY(6px);box-shadow:0 2px 0 rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.25)}
+.big:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.strip{height:170px;border-radius:8px;background:#1b1e21;box-shadow:inset 0 2px 6px #000;transition:background .2s}
+/* keypad */
+.keys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:230px;margin:6px auto 0}
+.key{aspect-ratio:1;border:0;border-radius:10px;background:#e9e4d4;color:#1a1a1a;font:36px/1 "Times New Roman",serif;cursor:pointer;position:relative;
+box-shadow:0 5px 0 #8f8a7a;min-height:44px}
+.key:active{transform:translateY(3px);box-shadow:0 2px 0 #8f8a7a}
+.key.hit::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.key:focus-visible{outline:3px solid #fff}
+/* pulse */
+.pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:200px;margin:6px auto 0;transform:rotate(45deg) scale(.86)}
+.pad{aspect-ratio:1;border:0;border-radius:12px;cursor:pointer;opacity:.42;transition:opacity .08s,filter .08s;min-height:44px}
+.pad.lit{opacity:1;filter:brightness(1.35) drop-shadow(0 0 12px currentColor)}
+.pad:focus-visible{outline:3px solid #fff}
+.stage{text-align:center;font:13px "Barlow Condensed",sans-serif;color:#9aa2a9;margin-top:4px}
+/* overlay */
+.over{position:absolute;inset:0;border-radius:22px;background:rgba(18,20,22,.9);display:flex;align-items:center;justify-content:center;
+text-align:center;padding:24px;color:#eef0f2;z-index:5}
+.over[hidden]{display:none}
+.over h2{font-size:clamp(36px,6vw,52px);font-weight:800;margin-bottom:8px}
+.over p{margin:0 auto 18px;max-width:40ch;color:#c6cbd0}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.cta{font:700 18px "Barlow Condensed",sans-serif;padding:12px 22px;min-height:44px;border-radius:10px;border:0;cursor:pointer;background:#f2c230;color:#161616}
+.cta.alt{background:#3a4046;color:#eef0f2}
+.cta[aria-pressed=true]{outline:3px solid #fff;outline-offset:2px}
+.cta:focus-visible{outline:3px solid #fff;outline-offset:2px}
+/* manual */
+.manual{background:var(--paper);border-radius:6px;padding:22px clamp(16px,3vw,28px);box-shadow:0 18px 30px -20px rgba(0,0,0,.5);position:relative}
+.manual::before{content:"";position:absolute;top:-10px;left:50%;width:120px;height:22px;margin-left:-60px;border-radius:6px;background:linear-gradient(#9aa1a8,#5f666d)}
+.manual h2{font-size:32px;font-weight:800;margin-bottom:4px}
+.manual .sub{color:var(--pink);margin:0 0 10px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 16px;border-bottom:2px solid var(--rule);padding-bottom:10px}
+.tabs button{font:700 16px "Barlow Condensed",sans-serif;background:none;border:0;color:var(--ink);padding:8px 12px;min-height:40px;border-radius:8px;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--paper)}
+.tabs button:focus-visible{outline:2px solid var(--ink)}
+.manual h3{font-size:22px;margin:4px 0 8px}
+.manual ol{padding-left:1.3em;margin:0 0 12px}.manual li{margin-bottom:6px}
+.manual table{border-collapse:collapse;width:100%;margin:8px 0 12px;font-size:15px}
+.manual th,.manual td{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:center}
+.manual th{font-family:"Barlow Condensed",sans-serif;font-size:15px}
+.sym{font:26px/1.2 "Times New Roman",serif}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.note{font-size:14px;color:var(--pink)}
+@media(prefers-reduced-motion:reduce){.device.shake{animation:none}*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Defusal training rig</h1>
+  <p>Read the casing, check the field manual, and neutralise all four modules before the clock runs out. Three strikes and it's over. Play solo, or have a partner read the manual without seeing the device.</p>
+</header>
+<div class="grid">
+<section class="device" id="device" aria-label="Device">
+  <span class="bolt" style="top:8px;left:8px"></span><span class="bolt" style="top:8px;right:8px"></span>
+  <span class="bolt" style="bottom:8px;left:8px"></span><span class="bolt" style="bottom:8px;right:8px"></span>
+  <div class="top">
+    <div class="lcd" id="clock" aria-live="off">5:00</div>
+    <div class="edge">
+      <div class="tag">Serial<b id="serial">——</b></div>
+      <div class="tag">Batteries<b id="batt">—</b></div>
+    </div>
+    <div class="strikes" aria-label="Strikes"><i></i><i></i><i></i></div>
+  </div>
+  <div class="mods">
+    <div class="mod" id="m-wires"><h3>Wires</h3><span class="led"></span><div class="wires" id="wires"></div></div>
+    <div class="mod" id="m-button"><h3>Button</h3><span class="led"></span>
+      <div class="btnmod"><button class="big" id="big">PRESS</button><div class="strip" id="strip" aria-label="Indicator strip"></div></div></div>
+    <div class="mod" id="m-keys"><h3>Keypad</h3><span class="led"></span><div class="keys" id="keys"></div></div>
+    <div class="mod" id="m-pulse"><h3>Pulse</h3><span class="led"></span><div class="pads" id="pads"></div><div class="stage" id="stage">Stage 1 of 3</div></div>
+  </div>
+  <div class="over" id="over">
+    <div>
+      <h2 id="oTitle">Ready to defuse?</h2>
+      <p id="oText">Pick your time limit. The timer speeds up with every strike.</p>
+      <div class="row" id="times" style="margin-bottom:12px">
+        <button class="cta alt" data-t="420">7:00 Recruit</button>
+        <button class="cta alt" data-t="300" aria-pressed="true">5:00 Standard</button>
+        <button class="cta alt" data-t="180">3:00 Expert</button>
+      </div>
+      <button class="cta" id="go">Arm the device</button>
+    </div>
+  </div>
+</section>
+
+<aside class="manual" aria-label="Field manual">
+  <h2>Field manual</h2>
+  <p class="sub">Modules can be solved in any order. A wrong action is a strike.</p>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="page"></div>
+</aside>
+</div>
+</div>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const COL={red:'#e8382e',blue:'#2f6fe0',yellow:'#f2c230',white:'#eeeeee',black:'#141414',green:'#2fb85a'};
+const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+
+/* ---------- sound ---------- */
+let ac=null;
+const beep=(f,d=.08,type='square',v=.05)=>{if(!ac)return;try{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;
+g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}};
+
+/* ---------- shared data (manual is built from the same rules) ---------- */
+const KEYCOLS=[['Ω','ζ','¶','★','Ж','‡'],['λ','¶','∞','Ψ','☾','¿'],['©','Ж','ξ','Φ','∂','★'],['Δ','¥','∞','‡','Б','☼'],['Ѣ','ξ','¤','☾','∇','Ω'],['§','Я','Φ','¥','≈','λ']];
+const PC=['red','blue','green','yellow'];
+// PMAP[vowel?1:0][strikes] = {flashed: press}
+const PMAP=[
+ [{red:'blue',blue:'yellow',green:'green',yellow:'red'},{red:'red',blue:'blue',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'}],
+ [{red:'blue',blue:'red',green:'yellow',yellow:'green'},{red:'yellow',blue:'green',green:'blue',yellow:'red'},{red:'green',blue:'red',green:'yellow',yellow:'blue'}]];
+const HOLDDIGIT={blue:'4',yellow:'5',green:'2',red:'1'};
+
+/* ---------- state ---------- */
+let G=null, limit=300, raf=0, flashT=0, lastTick=-1;
+
+function newSerial(){const L='ABCDEFGHJKLMNPQRSTUVWXZ',D='0123456789';let s='';for(let i=0;i<5;i++)s+=Math.random()<.5?pick(L):pick(D);return s+pick(D)}
+
+function wireAnswer(w,serial){
+  const odd=+serial.slice(-1)%2===1, cnt=c=>w.filter(x=>x===c).length;
+  if(odd&&cnt('red')>0)return w.lastIndexOf('red');
+  if(cnt('yellow')===1)return w.indexOf('yellow');
+  if(cnt('black')===0)return 1;
+  if(w[0]==='white')return w.length-1;
+  return 0;
+}
+function buttonAction(color,label,batt){
+  if(color==='blue'&&label==='ABORT')return 'hold';
+  if(batt>=2&&label==='DETONATE')return 'tap';
+  if(color==='white')return 'hold';
+  if(color==='red'&&label==='HOLD')return 'tap';
+  return 'hold';
+}
+function makeKeys(){
+  for(;;){const c=rnd(KEYCOLS.length),pickd=shuffle(KEYCOLS[c]).slice(0,4);
+    const fits=KEYCOLS.filter(col=>pickd.every(s=>col.includes(s)));
+    if(fits.length===1)return{order:KEYCOLS[c].filter(s=>pickd.includes(s)),shown:shuffle(pickd),hits:0}}
+}
+
+function newGame(){
+  const serial=newSerial(), batt=1+rnd(3);
+  const n=3+rnd(4), wires=Array.from({length:n},()=>pick(Object.keys(COL)));
+  const color=pick(['red','blue','yellow','white']), label=pick(['ABORT','HOLD','PRESS','DETONATE']);
+  G={serial,batt,vowel:/[AEIOU]/.test(serial)?1:0,left:limit*1000,strikes:0,over:false,solved:new Set(),
+    wires,cut:new Set(),wireAns:wireAnswer(wires,serial),
+    btn:{color,label,action:buttonAction(color,label,batt),downAt:0,strip:null,timer:0},
+    keys:makeKeys(),
+    pulse:{seq:[pick(PC),pick(PC),pick(PC)],stage:1,idx:0}};
+  render();
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  $('#serial').textContent=G.serial;$('#batt').textContent=G.batt;
+  $('#wires').innerHTML=G.wires.map((c,i)=>`<button class="wire" data-i="${i}" aria-label="Wire ${i+1}, ${c}"><span class="n">${i+1}</span><span class="cable" style="background:${COL[c]}"></span><span class="post"></span></button>`).join('');
+  const b=$('#big');b.textContent=G.btn.label;b.style.background=COL[G.btn.color];b.style.color=G.btn.color==='white'||G.btn.color==='yellow'?'#161616':'#fff';
+  $('#strip').style.background='';
+  $('#keys').innerHTML=G.keys.shown.map(s=>`<button class="key" data-s="${s}" aria-label="Symbol ${s}">${s}</button>`).join('');
+  $('#pads').innerHTML=PC.map(c=>`<button class="pad" data-c="${c}" aria-label="${c} pad" style="background:${COL[c]};color:${COL[c]}"></button>`).join('');
+  document.querySelectorAll('.mod').forEach(m=>m.classList.remove('done'));
+  drawStrikes();drawStage();drawClock();
+}
+const drawStrikes=()=>document.querySelectorAll('.strikes i').forEach((e,i)=>e.classList.toggle('on',i<G.strikes));
+const drawStage=()=>$('#stage').textContent=G.solved.has('pulse')?'Complete':`Stage ${G.pulse.stage} of 3`;
+const clockText=()=>{const s=Math.max(0,Math.ceil(G.left/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const drawClock=()=>$('#clock').textContent=clockText();
+
+/* ---------- game flow ---------- */
+function strike(){
+  if(G.over)return;G.strikes++;drawStrikes();beep(110,.35,'sawtooth',.09);
+  const d=$('#device');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');
+  if(G.strikes>=3)end(false,'Three strikes.');
+}
+function solve(id){
+  if(G.solved.has(id))return;G.solved.add(id);$('#m-'+id).classList.add('done');beep(880,.12,'sine',.08);setTimeout(()=>beep(1320,.15,'sine',.07),110);
+  if(G.solved.size===4)end(true);
+}
+function end(win,why){
+  G.over=true;cancelAnimationFrame(raf);clearTimeout(flashT);lightPad(null);
+  const t=clockText();
+  $('#oTitle').textContent=win?'Device defused':'Boom.';
+  $('#oText').textContent=win?`All four modules neutralised with ${t} left and ${G.strikes} strike${G.strikes===1?'':'s'}.`:`${why} The serial was ${G.serial}. Study the manual and try again.`;
+  $('#go').textContent='Play again';$('#over').hidden=false;
+  if(win){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sine',.08),i*120))}else beep(60,1.2,'sawtooth',.15);
+}
+function loop(prev){
+  raf=requestAnimationFrame(now=>{
+    if(G.over)return;
+    G.left-=(now-prev)*(1+.25*G.strikes);
+    const sec=Math.ceil(G.left/1000);
+    if(sec!==lastTick){lastTick=sec;beep(sec<=10?1500:1000,.03,'square',.025)}
+    drawClock();
+    if(G.left<=0){G.left=0;drawClock();end(false,'Time ran out.');return}
+    loop(now);
+  });
+}
+function start(){
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){ac=null}
+  newGame();$('#over').hidden=true;lastTick=-1;
+  const p=performance.now();loop(p);schedFlash(600);
+}
+document.querySelectorAll('#times button').forEach(b=>b.onclick=()=>{limit=+b.dataset.t;document.querySelectorAll('#times button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+$('#go').onclick=start;
+
+/* ---------- wires ---------- */
+$('#wires').onclick=e=>{
+  const w=e.target.closest('.wire');if(!w||G.over||G.solved.has('wires'))return;
+  const i=+w.dataset.i;if(G.cut.has(i))return;G.cut.add(i);w.classList.add('cut');beep(300,.05,'triangle',.06);
+  i===G.wireAns?solve('wires'):strike();
+};
+
+/* ---------- button ---------- */
+const big=$('#big');
+function down(){
+  if(!G||G.over||G.solved.has('button')||G.btn.downAt)return;
+  G.btn.downAt=performance.now();big.classList.add('down');beep(400,.04);
+  G.btn.timer=setTimeout(()=>{G.btn.strip=pick(['red','blue','yellow','green']);$('#strip').style.background=COL[G.btn.strip]},600);
+}
+function up(){
+  if(!G||!G.btn.downAt)return;
+  const held=performance.now()-G.btn.downAt>=600;clearTimeout(G.btn.timer);G.btn.downAt=0;big.classList.remove('down');
+  if(G.over)return;
+  let ok;
+  if(!held)ok=G.btn.action==='tap';
+  else ok=G.btn.action==='hold'&&clockText().includes(HOLDDIGIT[G.btn.strip]);
+  $('#strip').style.background='';G.btn.strip=null;
+  ok?solve('button'):strike();
+}
+big.addEventListener('pointerdown',e=>{e.preventDefault();big.setPointerCapture?.(e.pointerId);down()});
+big.addEventListener('pointerup',up);big.addEventListener('pointercancel',up);
+big.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();down()}});
+big.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();up()}});
+big.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- keypad ---------- */
+$('#keys').onclick=e=>{
+  const k=e.target.closest('.key');if(!k||G.over||G.solved.has('keys')||k.classList.contains('hit'))return;
+  if(k.dataset.s===G.keys.order[G.keys.hits]){k.classList.add('hit');G.keys.hits++;beep(650,.05);if(G.keys.hits===4)solve('keys')}
+  else strike();
+};
+
+/* ---------- pulse ---------- */
+function lightPad(c){document.querySelectorAll('.pad').forEach(p=>p.classList.toggle('lit',p.dataset.c===c))}
+const TONE={red:330,blue:440,green:550,yellow:660};
+function schedFlash(delay){
+  clearTimeout(flashT);
+  flashT=setTimeout(function run(){
+    if(!G||G.over||G.solved.has('pulse'))return;
+    const s=G.pulse.seq.slice(0,G.pulse.stage);let i=0;
+    (function step(){
+      if(G.over)return;
+      if(i>=s.length){lightPad(null);flashT=setTimeout(run,2200);return}
+      const c=s[i++];lightPad(c);beep(TONE[c],.18,'sine',.035);
+      flashT=setTimeout(()=>{lightPad(null);flashT=setTimeout(step,250)},450);
+    })();
+  },delay);
+}
+$('#pads').onclick=e=>{
+  const p=e.target.closest('.pad');if(!p||G.over||G.solved.has('pulse'))return;
+  clearTimeout(flashT);lightPad(p.dataset.c);setTimeout(()=>lightPad(null),180);beep(TONE[p.dataset.c],.15,'sine',.05);
+  const P=G.pulse, want=PMAP[G.vowel][Math.min(G.strikes,2)][P.seq[P.idx]];
+  if(p.dataset.c===want){
+    P.idx++;
+    if(P.idx===P.stage){P.stage++;P.idx=0;if(P.stage>3){solve('pulse');drawStage();return}drawStage();schedFlash(900);return}
+    schedFlash(3500);
+  }else{P.idx=0;strike();if(!G.over)schedFlash(1200)}
+};
+
+/* ---------- manual ---------- */
+const sw=c=>`<span class="sw" style="background:${COL[c]};outline:1px solid #0003"></span>${cap(c)}`;
+const PAGES={
+ 'Casing':`<h3>Reading the casing</h3><ol>
+  <li><b>Serial number</b>: six characters on the plate. The last character is always a digit. Vowels are A, E, I, O, U.</li>
+  <li><b>Batteries</b>: the count shown beside the serial.</li>
+  <li><b>Strikes</b>: each mistake lights a lamp and makes the timer run 25% faster. The third strike detonates the device.</li>
+  <li>When a module is solved, its lamp turns green.</li></ol>
+  <p class="note">Tip: play with a partner. One person sees only the device and describes it; the other sees only this manual.</p>`,
+ 'Wires':`<h3>Wires</h3><p>Cut exactly one wire. Wires are numbered from the top. Use the first rule that applies:</p><ol>
+  <li>If the serial's last digit is odd and there is at least one red wire, cut the <b>last red</b> wire.</li>
+  <li>Otherwise, if there is exactly one yellow wire, cut the <b>yellow</b> wire.</li>
+  <li>Otherwise, if there are no black wires, cut the <b>second</b> wire.</li>
+  <li>Otherwise, if the first wire is white, cut the <b>last</b> wire.</li>
+  <li>Otherwise, cut the <b>first</b> wire.</li></ol>`,
+ 'Button':`<h3>The button</h3><p>Decide whether to tap (press and release quickly) or hold. Use the first rule that applies:</p><ol>
+  <li>Blue button labelled ABORT: <b>hold</b>.</li>
+  <li>Two or more batteries and labelled DETONATE: <b>tap</b>.</li>
+  <li>White button: <b>hold</b>.</li>
+  <li>Red button labelled HOLD: <b>tap</b>.</li>
+  <li>Anything else: <b>hold</b>.</li></ol>
+  <p><b>Holding:</b> after a moment the strip beside the button lights up. Release when the timer shows this digit in any position:</p>
+  <table><thead><tr><th>Strip colour</th><th>Release on</th></tr></thead><tbody>${Object.entries(HOLDDIGIT).map(([c,d])=>`<tr><td>${sw(c)}</td><td><b>${d}</b></td></tr>`).join('')}</tbody></table>`,
+ 'Keypad':`<h3>Keypad</h3><p>Exactly one column below contains all four symbols on the keypad. Press the four keys in the order they appear in that column, top to bottom.</p>
+  <div class="scroll"><table><thead><tr>${KEYCOLS.map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>
+  ${KEYCOLS[0].map((_,r)=>`<tr>${KEYCOLS.map(c=>`<td class="sym">${c[r]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`,
+ 'Pulse':`<h3>Pulse</h3><p>The pads flash a sequence. For each flash, press the pad shown in the table, in order. Each stage adds one flash; clear three stages. The answer depends on whether the serial contains a vowel and on your <b>current</b> strike count.</p>
+  ${[1,0].map(v=>`<p style="margin:14px 0 0"><b>Serial ${v?'has':'has no'} vowel</b></p><div class="scroll"><table><thead><tr><th>Flash</th><th>0 strikes</th><th>1 strike</th><th>2 strikes</th></tr></thead><tbody>
+  ${PC.map(c=>`<tr><td>${sw(c)}</td>${PMAP[v].map(m=>`<td>${sw(m[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}`
+};
+const names=Object.keys(PAGES);
+$('#tabs').innerHTML=names.map((n,i)=>`<button role="tab" id="tab-${n}" aria-selected="${i===0}">${n}</button>`).join('');
+const show=n=>{$('#page').innerHTML=PAGES[n];document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.textContent===n))};
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)show(b.textContent)};
+show('Casing');
+
+/* idle preview behind the start screen */
+newGame();G.over=true;
+}
+</script>
+</body>
+</html>
