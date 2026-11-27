@@ -881,14 +881,17 @@ function syncSave(){
   return lbCall('load_progress',{p_id:id,p_pin:P.pin}).then(prog=>{
       if(prog){if(prog._name&&prog._name!==S.current)adoptName(prog._name);mergeInto(P,prog);save()}   // a rename done in the database reaches this device
       return lbCall('save_progress',{p_id:id,p_name:S.current,p_pin:P.pin,p_progress:{best:P.best,unlocked:P.unlocked}})})
-    .catch(e=>{if(e.message==='pin taken'){P.pin=newPin();save();return up().catch(()=>{})}});   // someone with this name has that code
+    .catch(e=>{
+      if(e.message==='pin taken'){P.pin=newPin();save();return up().catch(()=>{})}   // someone with this name has that code
+      if(e.message==='wrong pin'&&!P.pinBad){P.pinBad=true;save();if(mode==='title')showOver('title')}   // the code was changed in the database
+    });
 }
 // play as an existing player on this device: name + code
 function claimPlayer(name,code){
   const old=S.players[name]&&S.players[name].id;
   return lbCall('claim_player',{p_name:name,p_pin:code,p_old_id:old||null}).then(r=>{
     const m=r&&r[0];if(!m)throw new Error('no match');
-    S.current=name;const P=prof();P.id=m.out_id;P.pin=code;mergeInto(P,m.out_progress);save();
+    S.current=name;const P=prof();P.id=m.out_id;P.pin=code;delete P.pinBad;mergeInto(P,m.out_progress);save();
     return syncSave().then(()=>submitScore());
   });
 }
@@ -1004,7 +1007,7 @@ function showOver(m,why){
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
-    text='Cut the wires. Beat the clock.';go='▶ PLAY';
+    text=S.current&&prof().pinBad?'Your code has changed. Tap your name at the top and enter it to keep your progress saved.':'Cut the wires. Beat the clock.';go='▶ PLAY';
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
   // name screen: a name and PLAY (the code box only appears once a name clash is confirmed).
   // "Change name" switches it to renaming the current player: New name → SAVE, or Cancel.
@@ -1061,7 +1064,9 @@ function nameSubmit(){
   const v=$('#name').value.trim().slice(0,20),code=$('#pin').value.trim(),msg=t=>{$('#oText').textContent=t};
   if(!v){$('#name').focus();return}
   const go=()=>toBrief(Math.min(prof().unlocked,LEVELS.length-1)),g=$('#go');
-  if(v===S.current||(S.players[v]&&!code)){S.current=v;save();syncSave();go();return}
+  // a save on this device counts as "you" only if it has progress and its code still matches the database
+  const mine=S.players[v],trusted=mine&&!mine.pinBad&&Object.keys(mine.best||{}).length>0;
+  if(trusted&&!code){S.current=v;save();syncSave();go();return}
   if(code){
     if(!/^[0-9]{4}$/.test(code)){msg('The code is 4 digits.');return}
     if(!lbOn()){msg('Codes need the online leaderboard.');return}
@@ -1069,10 +1074,10 @@ function nameSubmit(){
     claimPlayer(v,code).then(()=>{g.disabled=false;go()})
       .catch(e=>{g.disabled=false;msg(e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.')});
     return}
-  const fresh=()=>{S.current=v;prof();save();syncSave();go()};
+  const fresh=()=>{S.current=v;prof();save();syncSave();go()};   // (also reuses an empty save of that name on this device)
   if(!lbOn()){fresh();return}                      // offline: no check
   g.disabled=true;
-  lbCall('name_taken',{p_name:v}).then(taken=>{g.disabled=false;
+  lbCall('name_taken',{p_name:v,p_id:(mine&&mine.id)||null}).then(taken=>{g.disabled=false;
     if(taken){$('#pin').hidden=false;msg(`“${v}” is already playing. If that’s you, enter your 4-digit code.`);$('#pin').focus();return}
     fresh()}).catch(()=>{g.disabled=false;fresh()});
 }

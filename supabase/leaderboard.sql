@@ -292,10 +292,15 @@ create or replace function public.name_taken(p_name text)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)));
 $$;
+-- the same, ignoring the asking device's own player (an empty save it made by mistake shouldn't hide the real one)
+create or replace function public.name_taken(p_name text, p_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)) and p.player_id is distinct from p_id);
+$$;
 
 -- ── Access: the public key may call these functions and nothing else ─────────
-revoke all on function public.name_taken(text), public.rename_player(uuid, text, text), public.player_name(uuid, text) from public;
-grant execute on function public.name_taken(text), public.rename_player(uuid, text, text) to anon, authenticated;
+revoke all on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text), public.player_name(uuid, text) from public;
+grant execute on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text) to anon, authenticated;
 revoke all on function
   public.submit_score(uuid, text, int, int, bigint), public.submit_score(uuid, text, int, int),
   public.top_scores(int), public.my_rank(uuid),
