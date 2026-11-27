@@ -191,7 +191,7 @@ border-radius:16px;padding:14px 10px;box-shadow:inset 0 4px 12px #000;margin-bot
 .chip{background:rgba(0,0,0,.35);border-radius:999px;padding:8px 16px;font:22px/1 "Share Tech Mono",monospace;color:#fff}
 .chip.hot{background:#f2c230;color:#161616;font:800 18px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em}
 .name{font-size:24px;min-height:60px;border-radius:16px;width:100%}
-.name.pin{font-size:18px;min-height:48px;margin-top:10px;letter-spacing:.08em}
+.name.pin{font-size:18px;min-height:48px;margin-top:10px;letter-spacing:.08em}.name[hidden]{display:none}
 .lvls[hidden],.row[hidden],.link[hidden]{display:none}
 .lvls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;max-width:none;margin:0 0 20px}
 .lv{width:auto;height:auto;aspect-ratio:1;border-radius:16px;font:24px/1 "Share Tech Mono",monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 4px 0 #1b1e21}
@@ -1005,8 +1005,8 @@ function showOver(m,why){
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
     text='Cut the wires. Beat the clock.';go='▶ PLAY';
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)}}
-  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go=S.current?'✎ RENAME':'PLAY';$('#name').value=S.current;$('#pin').value='';
-    if(lbOn())text=S.current?`Your code is ${prof().pin}. Use it with your name to play on another device.`:'Played before on another device? Add your 4-digit code.'}
+  if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value=S.current;$('#pin').value='';showPin();
+    if(lbOn()&&S.current)text=`Your code is ${prof().pin}. Use it with your name on another device.`}
   if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
     top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
   if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
@@ -1020,8 +1020,8 @@ function showOver(m,why){
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
-  const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board'&&m!=='title'&&!(m==='name'&&S.current);
-  alt.textContent=m==='board'?'↻ Refresh':m==='title'?'📅 Daily bomb':m==='name'?'👤 New player':'↻ Replay';
+  const alt=$('#alt');alt.hidden=m!=='win'&&m!=='board'&&m!=='title';
+  alt.textContent=m==='board'?'↻ Refresh':m==='title'?'📅 Daily bomb':'↻ Replay';
   clearInterval(titleT);if(m==='title'){let s=10;titleT=setInterval(()=>{const c=$('#tclock');if(!c||mode!=='title'){clearInterval(titleT);return}
     s=s>0?s-1:10;c.textContent='0:'+String(s).padStart(2,'0');c.classList.toggle('low',s<=3)},1000)}
   clearInterval(boardTimer);if(m==='board')boardTimer=setInterval(()=>{if(mode==='board'&&!document.hidden)drawBoard(true)},20000);
@@ -1048,43 +1048,33 @@ $('#go').onclick=()=>{
   if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
-// name screen. A new player: PLAY. An existing player: ✎ RENAME keeps their progress and ID under the new name;
-// 👤 New player (asNew) switches to another player on this device, or starts a fresh one. A code always means
-// "play as that existing player".
-function nameSubmit(asNew){
-    const v=$('#name').value.trim().slice(0,20);if(!v){$('#name').focus();return}
-    const changing=!!S.current,code=$('#pin').value.trim(),msg=t=>{$('#oText').textContent=t};
-    if(code){
-      if(!/^[0-9]{4}$/.test(code)){$('#oText').textContent='The code is 4 digits.';return}
-      if(!lbOn()){$('#oText').textContent='Codes need the online leaderboard.';return}
-      const g=$('#go');g.disabled=true;$('#oText').textContent='Checking…';
-      claimPlayer(v,code).then(()=>{g.disabled=false;$('#pin').value='';if(changing)showOver('map');else toBrief(Math.min(prof().unlocked,LEVELS.length-1))})
-        .catch(e=>{g.disabled=false;$('#oText').textContent=e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.'});
-      return}
-    const renaming=changing&&!asNew;
-    if(renaming&&v===S.current){showOver('map');return}
-    if(renaming&&S.players[v]){msg(`“${v}” is already a player on this device. Tap 👤 New player to switch to it.`);return}
-    const proceed=()=>{
-      if(renaming){renameMe(v);return}
-      S.current=v;const P=prof();save();syncSave();if(changing)showOver('map');else toBrief(Math.min(P.unlocked,LEVELS.length-1))};
-    // a name someone else already plays under needs their code (names saved on this device are fine; offline lets you through)
-    if(S.players[v]||!lbOn()){proceed();return}
-    const g=$('#go');g.disabled=true;
-    lbCall('name_taken',{p_name:v}).then(taken=>{g.disabled=false;
-      if(taken){msg(`“${v}” is already playing. Enter that player’s 4-digit code, or pick another name.`);$('#pin').focus();return}
-      proceed()}).catch(()=>{g.disabled=false;proceed()});
+// name screen: type a name and PLAY.
+//  · your name, or a name already played on this device → play as them
+//  · a new name with a code → play as that existing player from another device
+//  · a new name someone already plays under → asked for their code
+//  · otherwise → a new player
+function nameSubmit(){
+  const v=$('#name').value.trim().slice(0,20),code=$('#pin').value.trim(),msg=t=>{$('#oText').textContent=t};
+  if(!v){$('#name').focus();return}
+  const go=()=>toBrief(Math.min(prof().unlocked,LEVELS.length-1)),g=$('#go');
+  if(v===S.current||(S.players[v]&&!code)){S.current=v;save();syncSave();go();return}
+  if(code){
+    if(!/^[0-9]{4}$/.test(code)){msg('The code is 4 digits.');return}
+    if(!lbOn()){msg('Codes need the online leaderboard.');return}
+    g.disabled=true;msg('Checking…');
+    claimPlayer(v,code).then(()=>{g.disabled=false;go()})
+      .catch(e=>{g.disabled=false;msg(e.message==='no match'?'That name and code don’t match.':'Couldn’t check the code. Try again.')});
+    return}
+  const fresh=()=>{S.current=v;prof();save();syncSave();go()};
+  if(!lbOn()){fresh();return}                      // offline: no check
+  g.disabled=true;
+  lbCall('name_taken',{p_name:v}).then(taken=>{g.disabled=false;
+    if(taken){$('#pin').hidden=false;msg(`“${v}” is already playing. If that’s you, enter your 4-digit code.`);$('#pin').focus();return}
+    fresh()}).catch(()=>{g.disabled=false;fresh()});
 }
-// rename the current player: the database renames them everywhere (same ID, progress and code), then this
-// device follows. Needs the internet; the database is in charge of names.
-function renameMe(v){
-  const msg=t=>{$('#oText').textContent=t};
-  if(!lbOn()){msg('Renaming needs the online leaderboard.');return}
-  const g=$('#go');g.disabled=true;msg('Renaming…');
-  syncSave().then(()=>lbCall('rename_player',{p_id:pid(),p_pin:prof().pin,p_name:v}))
-    .then(()=>{g.disabled=false;adoptName(v);showOver('map')})
-    .catch(e=>{g.disabled=false;msg(e.message==='name taken'?`“${v}” is already playing. Pick another name.`:'Couldn’t rename right now. Check your connection and try again.')});
-}
-// this device's player now goes by a different name (renamed here, or in the database): move the local save over
+// the code box only matters for a name this device doesn't know
+const showPin=()=>{const v=$('#name').value.trim();$('#pin').hidden=!lbOn()||!v||v===S.current||!!S.players[v]};
+// this device's player now goes by a different name (renamed in the database): move the local save over
 function adoptName(n){
   const old=S.current,P=S.players[old],other=S.players[n];if(!P||n===old)return;
   if(other&&other!==P&&Object.keys(other.best||{}).length)return;   // an empty profile with that name (started by mistake) is replaced
@@ -1092,9 +1082,10 @@ function adoptName(n){
 }
 let boardTimer=0;
 let titleT=0;
-$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='name'){nameSubmit(true);return}if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
+$('#alt').onclick=()=>{audioOn();SFX.click(1400);if(mode==='title'){if(S.current)openDaily();else showOver('name');return}if(mode==='board'){const a=$('#alt');a.classList.add('spin');setTimeout(()=>a.classList.remove('spin'),600);drawBoard(true);return}start()};
 $('#who').onclick=()=>showOver(mode==='map'?'name':'map');
 $('#name').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+$('#name').oninput=showPin;
 $('#pin').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lvls').onclick=e=>{const b=e.target.closest('.lv');if(b&&!b.disabled)toBrief(+b.dataset.i)};
 // ☰ during play: abandon the level and go to the map
