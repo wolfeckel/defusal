@@ -577,8 +577,8 @@ const LEVELS=[
   X('Slide',45,5,{slider:SL(1)},'New: the Slider. Drag to the number, let go.');
   X('Fine tune',35,5,{slider:SL(1)},'Quicker.');
   X('Twin rails',45,5,{slider:SL(2)},'Two sliders: A and B.');
-  X('Moving mark',45,8,{slider:SL(1,1400)},'The number moves. Let go on it.');
-  X('Chase',50,8,{slider:SL(2,1200)},'Two moving numbers.');
+  X('Quick slide',40,8,{slider:SL(1,1400)},'Less time.');
+  X('Double quick',45,8,{slider:SL(2,1200)},'Two sliders, less time.');
   X('Slide and cut',70,8,{wires:w2,slider:SL(2)},'Slider + Wires.');
   X('Slide and dial',70,10,{dial:dl,slider:SL(1,1200)},'Slider + Dial.');
   X('Slide and flip',75,10,{switches:sw,slider:sl},'Slider + Switches.');
@@ -812,7 +812,8 @@ function solve(id){
   if(G.solved.size===G.active.length){if(G.lvl.final)setTimeout(openCover,300);else defused()}
 }
 // memory: show a module's instruction, then blank it after the level's hide time (or the module's own memo time)
-function hideTime(id){const L=G.lvl;return id==='keys'?G.keys.memo||L.hide||0:id==='switches'?G.sw.memo||L.hide||0:id==='pulse'?0:L.hide||0}
+// (pulse and slider never hide their numbers)
+function hideTime(id){const L=G.lvl;return id==='keys'?G.keys.memo||L.hide||0:id==='switches'?G.sw.memo||L.hide||0:id==='pulse'||id==='slider'?0:L.hide||0}
 function peek(id){
   const t=hideTime(id);if(!t||G.solved.has(id))return;
   G.hid[id]=false;CLUE[id]();clearTimeout(G['ht_'+id]);
@@ -1325,7 +1326,6 @@ function start(){
   const p=performance.now();loop(p);if(G.active.includes('pulse'))lightPad(G.pulse.lit);SFX.arm();
   G.active.forEach(peek);
   if(G.active.includes('dial'))marchDial();
-  if(G.active.includes('slider')&&G.sl.move)gl(G.sl.move,moveSlider);
   if(G.decoy&&!G.decoy.revealed)gl(G.decoy.late,()=>{if(G.over)return;G.decoy.revealed=true;drawDecoy();beep(260,.1,'square',.05)});
   if(G.chain){G.chainHid=false;drawChain()}
 }
