@@ -720,7 +720,8 @@ const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{},p
 for(const p of Object.values(S.players)){const top=Math.max(-1,...Object.keys(p.best||{}).map(Number).filter(k=>k<NORMAL));p.unlocked=Math.min(Math.max(p.unlocked||0,top+1),NORMAL-1)}
 // Hard Mode: each player can switch it on once every normal level is beaten. Its progress is P.hunlocked (0 = Hard 1).
 const isHard=()=>!!(S.current&&prof().hard);
-const beatAll=P=>Object.keys(P.best||{}).filter(k=>+k<NORMAL).length>=NORMAL;
+// (hardTest: a this-device-only switch for trying Hard Mode early; it's never uploaded and changes no scores)
+const beatAll=P=>!!P.hardTest||Object.keys(P.best||{}).filter(k=>+k<NORMAL).length>=NORMAL;
 function nextLvl(){const P=prof();return isHard()?Math.min(NORMAL+(P.hunlocked||0),LEVELS.length-1):Math.min(P.unlocked||0,NORMAL-1)}
 let lvl=0;
 
