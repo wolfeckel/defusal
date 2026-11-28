@@ -1,3 +1,4 @@
+-- ==================== START: copy everything from this line ====================
 -- Defusal online leaderboard. Run this in Supabase → SQL Editor → New query → Run.
 -- Safe to run again: it keeps existing scores and only adds or updates what's needed.
 -- The game's public key can only call the functions below; the tables themselves stay locked.
@@ -359,3 +360,4 @@ grant execute on function
   public.submit_daily(uuid, text, date, int), public.top_daily(date, int), public.my_daily(uuid, date),
   public.save_progress(uuid, text, text, jsonb), public.load_progress(uuid, text), public.claim_player(text, text, uuid)
 to anon, authenticated;
+-- ==================== FINISH: copy everything up to this line ====================
