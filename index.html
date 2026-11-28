@@ -366,7 +366,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
     <div class="vgrid lockgrid">
       <div class="maint">
         <div class="hwrap">
-          <div class="wires" id="lockw"></div>
+          <div class="codebig" id="codeShow" aria-live="polite">----</div>
           <div class="plate" id="plate">
             <span class="warn">REMOVE 4 SCREWS</span>
             <button class="screw" style="top:2px;left:2px" aria-label="Screw"></button><button class="screw" style="top:2px;right:2px" aria-label="Screw"></button>
@@ -374,8 +374,7 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
           </div>
         </div>
       </div>
-      <div class="lockcode" id="lockcode" hidden>
-        <div class="codebig" id="codeShow" aria-live="polite">----</div>
+      <div class="lockcode" id="lockcode">
         <div class="vdisp" id="vdisp" aria-live="polite">····</div>
         <div class="pinpad" id="pinpad"><button class="pin" data-k="1">1</button><button class="pin" data-k="2">2</button><button class="pin" data-k="3">3</button><button class="pin" data-k="4">4</button><button class="pin" data-k="5">5</button><button class="pin" data-k="6">6</button><button class="pin" data-k="7">7</button><button class="pin" data-k="8">8</button><button class="pin" data-k="9">9</button><button class="pin fn" data-k="C">CLR</button><button class="pin" data-k="0">0</button><button class="pin fn ent" data-k="E">ENT</button></div>
       </div>
@@ -728,7 +727,6 @@ function newGame(){
       decoy:L.decoy?{late:L.decoy.late||0,revealed:!L.decoy.late,fake:pick(['TAP','TAP ×3','HOLD · LET GO IN GREEN']),color:pick(['red','blue','yellow','white'])}:null};
     G.chain=L.chain?shuffle(G.active):null;G.ci=0;G.chainHid=false;G.touched=new Set();
     // final lock: 5 wires in different colours, to be cut in a set order
-    G.lw=shuffle(Object.keys(COL)).slice(0,5);G.lorder=shuffle([0,1,2,3,4]);
     G.code=Array.from({length:(L.final&&L.final.len)||4},()=>rnd(10)).join('');   // revealed once the wires are cut
   }finally{RNG=Math.random}
   G.stage='modules';G.screws=0;G.lhits=0;G.lockHid=false;G.lockTimer=0;G.lockMemo=0;G.wiresDone=false;G.entry='';G.busy=false;G.codeTimer=0;
@@ -760,9 +758,8 @@ function render(){
   $('#c-final').classList.toggle('hint',!!G.lvl.final&&!(prev&&prev.final));
   $('#clock').classList.remove('safe');
   $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
-  $('#lockw').innerHTML=G.lw.map((c,i)=>`<button class="wire" data-i="${i}" aria-label="Lock wire ${i+1}, ${c}"><span class="n">${i+1}</span><span class="cable" style="background:${COL[c]}"></span><span class="post"></span></button>`).join('');
   $('#c-final').textContent='UNSCREW THE PLATE';
-  $('#lockcode').hidden=true;const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');cs.classList.toggle('long',G.code.length>4);drawEntry();
+  const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');cs.classList.toggle('long',G.code.length>4);drawEntry();
   $('#hudLvl').textContent=G.lvl.daily?'Daily bomb':`Level ${lvl+1}`;
   ORDER.forEach(id=>CLUE[id]());drawDecoy();drawChain();drawStrikes();drawClock();
 }
@@ -1473,21 +1470,13 @@ function shuffleMods(){
   beep(500,.05,'triangle',.05);
 }
 
-/* ---------- final lock: unscrew the plate, cut its 5 wires in order, then type the code they reveal ---------- */
-// the cut order shows as wire numbers; on harder locks (6-digit codes) as colours.
-// On memory levels the order hides once the first wire is cut, and the code once the first digit is pressed
-// (a mistake shows them again).
+/* ---------- final lock: unscrew the plate, read the code underneath, type it in ---------- */
+// on memory levels the code hides once the first digit is pressed (a mistake shows it again)
 function drawLockClue(){
-  const el=$('#c-final'),hard=G.lvl.final&&G.lvl.final.len>=6;
+  const el=$('#c-final');
   if(G.stage==='safe'){el.textContent=DONE;return}
   if(G.screws<4){el.textContent='UNSCREW THE PLATE';return}
-  if(G.wiresDone){el.textContent=G.lockMemo?'MEMORISE · ENTER THE CODE':'ENTER THE CODE';return}
-  if(G.lockHid){el.innerHTML=`CUT <span class="qq">? ? ?</span> <small>${G.lhits}/5</small>`;return}
-  el.innerHTML='CUT '+G.lorder.map((w,k)=>`<span class="lk${k<G.lhits?' ok':''}${k===G.lhits?' nx':''}">${hard?cp(G.lw[w]):w+1}</span>`).join('<span class="sep">→</span>');
-}
-function lockHideSoon(){
-  if(!G.lockMemo)return;clearTimeout(G.lockTimer);
-  G.lockTimer=setTimeout(()=>{if(G.over||G.stage!=='final')return;G.lockHid=true;drawLockClue()},G.lockMemo);GT.push(G.lockTimer);
+  el.textContent=G.lockMemo?'MEMORISE · ENTER THE CODE':'ENTER THE CODE';
 }
 function openCover(){
   if(G.over)return;G.stage='final';
@@ -1495,20 +1484,6 @@ function openCover(){
   try{if(ac){noiseBurst(ac.currentTime,.7,6000,800,.25,1.2);beep(70,.25,'square',.08)}}catch(e){}
   setTimeout(()=>{if(G.stage!=='final')return;mods.hidden=true;$('#m-final').hidden=false;beep(220,.12,'square',.05)},600);
 }
-$('#lockw').onclick=e=>{
-  const w=e.target.closest('.wire');if(!w||!G||G.over||G.stage!=='final'||G.screws<4||w.classList.contains('cut'))return;
-  if(+w.dataset.i===G.lorder[G.lhits]){
-    w.classList.add('cut');SFX.snip();G.lhits++;
-    if(G.lhits===1)lockHideSoon();
-    if(G.lhits===5){   // all cut: the lock's memory shows the code, and the keypad appears
-      G.wiresDone=true;G.lockHid=false;clearTimeout(G.lockTimer);$('#lockcode').hidden=false;drawLockClue();
-      [1000,1150,1300,1450].forEach((f,i)=>setTimeout(()=>beep(f,.06,'square',.04),i*90));return}
-    drawLockClue();
-  }else{
-    spark(w);strike();if(G.over)return;
-    if(G.lockMemo){G.lockHid=false;drawLockClue();lockHideSoon()}
-  }
-};
 function drawEntry(){const d=$('#vdisp'),n=G.code.length;d.className='vdisp';d.textContent=(G.entry+'·'.repeat(n)).slice(0,n);d.classList.toggle('long',n>4)}
 // memory levels: the code stays up until the first digit, then hides after the memo time
 function codeHideSoon(){
@@ -1540,7 +1515,7 @@ $('#plate').onclick=e=>{
   const s=e.target.closest('.screw');if(!s||!G||G.over||G.stage!=='final'||s.classList.contains('out'))return;
   s.classList.add('out');G.screws++;beep(1200,.03,'square',.03);setTimeout(()=>beep(900,.03,'square',.03),120);
   if(G.screws===4)setTimeout(()=>{$('#plate').classList.add('off');try{ac&&noiseBurst(ac.currentTime+.6,.15,3000,600,.4,1)}catch(e){}
-    G.lockMemo=(G.lvl.final&&G.lvl.final.memo)||0;drawLockClue()},500);
+    G.lockMemo=(G.lvl.final&&G.lvl.final.memo)||0;G.wiresDone=true;drawLockClue()},500);   // the code is under the plate; the keypad now works
 };
 
 /* start: name screen for new players, otherwise the next level's briefing */
