@@ -320,6 +320,10 @@ letter-spacing:.2em;text-indent:.2em;text-shadow:0 0 12px rgba(70,255,138,.6);bo
 .vgrid.lockgrid{grid-template-columns:minmax(0,1fr)}
 .lk{display:inline-block;min-width:22px;font-size:22px}.lk.ok{opacity:.3}.lk.nx{color:#fff;text-shadow:0 0 10px #46ff8a;transform:scale(1.15)}
 .lk .cp{font-size:14px}
+/* Hard Mode switch on the title */
+.cta.hardbtn{display:block;width:min(340px,100%);margin:0 auto 16px;min-height:48px;font-size:18px;background:#2a2f34;color:#eef0f2;box-shadow:0 5px 0 #15181b}
+.cta.hardbtn.on{background:#5b2620;color:#fff;box-shadow:0 5px 0 #2d120f}
+.cta.hardbtn[aria-disabled=true]{opacity:.55}
 /* title screen */
 .tbomb{position:relative;width:min(340px,100%);margin:0 auto 22px;padding:22px 18px 20px;border-radius:24px;
   background:linear-gradient(160deg,var(--case2),var(--case) 60%);box-shadow:0 2px 0 var(--edge) inset,0 -3px 0 #1a1d20 inset,0 30px 50px -20px rgba(0,0,0,.8),0 6px 0 #15181b;
@@ -627,8 +631,64 @@ const LEVELS=[
   X('Endgame',110,15,{wires:wsh,dial:dl2,slider:sl2},'Nearly there.',{len:6,memo:1800},{shuffle:'all',chain:{blind:1800},decoy:{late:800},hide:1800});
   X('Grandmaster',120,20,{wires:wsh,keys:ky2,dial:dl2,slider:sl2},'The last bomb. Everything at once.',{len:6,memo:1800},{shuffle:'all',chain:{blind:1600},hide:1800,boss:1});
 }
+// ── Worlds 12–17 (151–300): remixes of everything so far, ramping up to level 300, "Legend".
+// Generated from a fixed seed, so every player gets the same levels.
+{
+  const R=mulberry(seedOf('levels-151-300')),shufR=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const W3=[...W2,'not'],WSH=['color','num','all','not'],MODS=['wires','button','keys','pulse','switches','dial','slider'];
+  const ADJ=['Hot','Cold','Silent','Rapid','Broken','Hidden','Double','Final','Lucky','Wild','Steel','Midnight','Static','Crimson','Iron'],
+        NOUN=['Fuse','Circuit','Switch','Signal','Wire','Spark','Trigger','Relay','Pulse','Charge'];
+  const NAMES=shufR(ADJ.flatMap(a=>NOUN.map(b=>a+' '+b)));   // 150 different names
+  // themes per world: sd = some sudden death, hide = vanishing instructions, decoy, chain, shuffle, all = a mix of everything
+  const THEMES=[{},{sd:1},{hide:1},{decoy:1},{chain:1,shuffle:1},{all:1}];
+  for(let k=0;k<150;k++){
+    const n=151+k,tw=THEMES[Math.floor(k/25)],t=k/149,boss=n%10===0;
+    const memo=t>.5?Math.round(1800-600*t):0,moves=tw.shuffle||tw.all;
+    const cfg={wires:W([6,7],moves?WSH:W3,3),button:B(BALL,Math.round(16-5*t),+(1.4-.4*t).toFixed(2),+(1.8-.5*t).toFixed(2)),
+      keys:K(6,5,memo,.5),pulse:P(7+Math.round(2*t),.5),switches:SW(5,.5,memo),dial:D(Math.round(1000-300*t)),slider:SL(2)};
+    const decoy=(tw.decoy&&k%2===0)||(tw.all&&k%5===1);
+    const set=shufR(MODS).slice(0,decoy?3:4),mods={};MODS.forEach(m=>{if(set.includes(m))mods[m]=cfg[m]});
+    const x={boss};
+    if(decoy)x.decoy={late:Math.round(1000-300*t)};
+    if(tw.hide||(tw.all&&k%3===0))x.hide=Math.round(2500-800*t);
+    if(tw.chain&&k%2===1||(tw.all&&k%4===2))x.chain={blind:k%3?Math.round(2200-600*t):0};
+    if(moves&&k%2===0)x.shuffle=k%3?'mods':'all';
+    if(!boss&&((tw.sd&&k%3===1)||n%7===0))x.sd=1;
+    const intro=n===300?'The last bomb of the main game.':boss?'Boss level.':x.sd?'One mistake and it blows.':x.hide?'Instructions vanish.'
+      :x.chain?'Solve them in order.':x.shuffle?'Things move.':x.decoy?'Watch for the fake.':'Everything at once.';
+    LEVELS.push(LV(n===300?'Legend':NAMES[k],Math.round(130-35*t)+(boss?10:0),x.sd?0:Math.round(12+8*t),mods,intro,
+      {len:t>.3?6:4,memo:x.hide||t>.6?Math.round(2200-500*t):0},x));
+  }
+}
+// the main game ends here; Hard Mode's levels follow in the same list
+const NORMAL=LEVELS.length;
+// ── Hard Mode (Hard 1–100): unlocked by beating all normal levels. Very short clocks, tiny zones, fast dials,
+// lots of sudden death, vanishing instructions, blind chains and shuffling. No leaderboard.
+{
+  const R=mulberry(seedOf('hard-mode')),shufR=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const WSH=['color','num','all','not'],MODS=['wires','button','keys','pulse','switches','dial','slider'];
+  const ADJ=['Brutal','Savage','Deadly','Merciless','Nasty','Vicious','Wicked','Grim','Feral','Ruthless'],
+        NOUN=['Gauntlet','Inferno','Vortex','Abyss','Crucible','Maelstrom','Onslaught','Rampage','Tempest','Wrath'];
+  const NAMES=shufR(ADJ.flatMap(a=>NOUN.map(b=>a+' '+b)));
+  for(let k=0;k<100;k++){
+    const n=k+1,t=k/99,boss=n%10===0,memo=Math.round(1200-300*t);
+    const cfg={wires:W([6,7],WSH,3),button:B(BALL,Math.round(11-3*t),+(.95-.1*t).toFixed(2),+(1.3-.2*t).toFixed(2)),
+      keys:K(6,5,memo,.5),pulse:P(9,.5),switches:SW(5,.5,memo),dial:D(Math.round(700-150*t)),slider:SL(2)};
+    const decoy=k%4===3,set=shufR(MODS).slice(0,decoy?3:4),mods={};MODS.forEach(m=>{if(set.includes(m))mods[m]=cfg[m]});
+    const x={boss,shuffle:k%2===0?'all':'mods'};
+    if(decoy)x.decoy={late:Math.round(800-200*t)};
+    if(k%2===1)x.hide=Math.round(1500-500*t);
+    if(k%3===0)x.chain={blind:Math.round(1400-400*t)};
+    if(!boss&&k%4===1)x.sd=1;
+    LEVELS.push(LV(n===100?'Impossible':NAMES[k],Math.round(75-20*t)+(boss?8:0),x.sd?0:Math.round(20+10*t),mods,
+      n===100?'The hardest bomb there is.':boss?'Boss level.':x.sd?'One mistake and it blows.':'No mercy.',{len:6,memo:Math.round(1500-500*t)},x));
+  }
+}
 const WORLDS=[[1,'Training'],[28,'Twists'],[41,'Switches'],[51,'Dial'],[61,'Memory'],[71,'Sudden death'],[81,'Gauntlet'],
-  [101,'Slider'],[113,'Decoys'],[126,'Chain'],[138,'Shuffle']];
+  [101,'Slider'],[113,'Decoys'],[126,'Chain'],[138,'Shuffle'],
+  [151,'Remix'],[176,'Overtime'],[201,'Blackout'],[226,'Fakeout'],[251,'Lockstep'],[276,'Endgame'],[NORMAL+1,'Hard mode']];
+// level names for screens: "Level 12" in the main game, "Hard 7" in Hard Mode
+const lvName=i=>i>=NORMAL?`Hard ${i-NORMAL+1}`:`Level ${i+1}`;
 
 /* ---------- Daily bomb: one device per day, the same for everyone ---------- */
 const todayKey=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
@@ -657,7 +717,11 @@ const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}};
 const newPin=()=>String(Math.floor(Math.random()*10000)).padStart(4,'0');
 const prof=()=>S.players[S.current]||(S.players[S.current]={unlocked:0,best:{},pin:newPin()});
 // older saves capped "unlocked" at the old last level: open the level after the furthest one cleared
-for(const p of Object.values(S.players)){const top=Math.max(-1,...Object.keys(p.best||{}).map(Number));p.unlocked=Math.min(Math.max(p.unlocked||0,top+1),LEVELS.length-1)}
+for(const p of Object.values(S.players)){const top=Math.max(-1,...Object.keys(p.best||{}).map(Number).filter(k=>k<NORMAL));p.unlocked=Math.min(Math.max(p.unlocked||0,top+1),NORMAL-1)}
+// Hard Mode: each player can switch it on once every normal level is beaten. Its progress is P.hunlocked (0 = Hard 1).
+const isHard=()=>!!(S.current&&prof().hard);
+const beatAll=P=>Object.keys(P.best||{}).filter(k=>+k<NORMAL).length>=NORMAL;
+function nextLvl(){const P=prof();return isHard()?Math.min(NORMAL+(P.hunlocked||0),LEVELS.length-1):Math.min(P.unlocked||0,NORMAL-1)}
 let lvl=0;
 
 /* ---------- state ---------- */
@@ -760,7 +824,7 @@ function render(){
   $('#plate').classList.remove('off');document.querySelectorAll('.screw').forEach(x=>x.classList.remove('out'));
   $('#c-final').textContent='UNSCREW THE PLATE';
   const cs=$('#codeShow');cs.textContent=G.code;cs.classList.remove('gone');cs.classList.toggle('long',G.code.length>4);drawEntry();
-  $('#hudLvl').textContent=G.lvl.daily?'Daily bomb':`Level ${lvl+1}`;
+  $('#hudLvl').textContent=G.lvl.daily?'Daily bomb':lvName(lvl);
   ORDER.forEach(id=>CLUE[id]());drawDecoy();drawChain();drawStrikes();drawClock();
 }
 const CLUE={
@@ -834,9 +898,11 @@ function end(win,why){
     const left=Math.ceil(G.left/1000),ms=Math.max(1000,Math.round(G.lvl.time*1000-G.left)),stars=G.strikes===0?3:G.strikes===1?2:1,P=prof(),b=P.best[lvl];
     const betterStars=!!b&&(stars>b.s||(stars===b.s&&left>b.t)),pb=!b||!b.ms||ms<b.ms,nb=b?{...b}:{s:stars,t:left};
     if(betterStars){nb.s=stars;nb.t=left}
-    if(pb){nb.ms=ms;(P.pend=P.pend||{})[lvl]=ms}
+    if(pb){nb.ms=ms;if(lvl<NORMAL)(P.pend=P.pend||{})[lvl]=ms}   // Hard Mode times aren't on any board
     P.best[lvl]=nb;const res=G.result={stars,ms,beat:betterStars||(pb&&!!(b&&b.ms))};
-    P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,LEVELS.length-1));save();const sent=submitScore();syncSave();
+    if(lvl>=NORMAL)P.hunlocked=Math.max(P.hunlocked||0,Math.min(lvl-NORMAL+1,LEVELS.length-NORMAL-1));
+    else P.unlocked=Math.max(P.unlocked,Math.min(lvl+1,NORMAL-1));
+    save();const sent=submitScore();syncSave();
     showOver('win');celebrate();
     // once saved, show where this puts the player: overall rank (with movement) and rank on this level's fastest times
     if(lbOn()){const i=lvl,id=pid();Promise.all([sent,submitTimes()])
@@ -877,8 +943,9 @@ function mergeBest(a,b){
 }
 function mergeInto(P,prog){
   if(!prog)return;P.best=mergeBest(P.best,prog.best);
-  const top=Math.max(-1,...Object.keys(P.best).map(Number));
-  P.unlocked=Math.min(Math.max(P.unlocked||0,prog.unlocked||0,top+1),LEVELS.length-1);
+  const ks=Object.keys(P.best).map(Number),top=Math.max(-1,...ks.filter(k=>k<NORMAL)),htop=Math.max(-1,...ks.filter(k=>k>=NORMAL).map(k=>k-NORMAL));
+  P.unlocked=Math.min(Math.max(P.unlocked||0,prog.unlocked||0,top+1),NORMAL-1);
+  P.hunlocked=Math.min(Math.max(P.hunlocked||0,htop+1),LEVELS.length-NORMAL-1);
 }
 // pull the online save into this device, then send the combined save back
 function syncSave(){
@@ -906,7 +973,8 @@ function claimPlayer(name,code){
 // 12.4s, or 1:02.4 past a minute
 const fmtMs=ms=>{const s=ms/1000;return s<60?s.toFixed(1)+'s':Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0')};
 // levels cleared, stars, and total of best times (a level cleared before times existed counts as its full time limit)
-const totals=P=>{const b=Object.entries(P.best);return{levels:b.length,stars:b.reduce((a,[,x])=>a+x.s,0),ms:b.reduce((a,[i,x])=>a+(x.ms||LEVELS[i].time*1000),0)}};
+// the board counts the main game only
+const totals=P=>{const b=Object.entries(P.best).filter(([i])=>+i<NORMAL);return{levels:b.length,stars:b.reduce((a,[,x])=>a+x.s,0),ms:b.reduce((a,[i,x])=>a+(x.ms||LEVELS[i].time*1000),0)}};
 const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)});
 function pid(){const P=prof();if(!P.id){P.id=uuid();save()}return P.id}
 // send this player's totals (the server only ever keeps the better numbers)
@@ -980,7 +1048,7 @@ async function drawBoard(quiet){
   }catch(e){if(!stale())b.innerHTML='<li class="msg">Couldn’t load the leaderboard. Check your connection and try again.</li>'}
 }
 $('#btabs').onclick=e=>{const t=e.target.closest('button');if(!t||t.dataset.t===boardTab)return;SFX.click(1400);boardTab=t.dataset.t;drawBoard()};
-$('#lvpick').onclick=e=>{const d=e.target.closest('button');if(!d)return;const n=Math.min(LEVELS.length-1,Math.max(0,boardLvl+ +d.dataset.d));if(n===boardLvl)return;SFX.ratchet();boardLvl=n;drawBoard()};
+$('#lvpick').onclick=e=>{const d=e.target.closest('button');if(!d)return;const n=Math.min(NORMAL-1,Math.max(0,boardLvl+ +d.dataset.d));if(n===boardLvl)return;SFX.ratchet();boardLvl=n;drawBoard()};
 // briefing: your best time and the level record, filled in once known
 function drawRecord(){
   const i=lvl,isD=daily,add=h=>{if(mode==='brief'&&lvl===i&&daily===isD)$('#chips').insertAdjacentHTML('beforeend',h)};
@@ -998,39 +1066,44 @@ const kick=t=>`<div class="kicker">${t}</div>`;
 const chip=(t,c='')=>`<span class="chip ${c}">${t}</span>`;
 const starHTML=n=>`<div class="stars" aria-label="${n} of 3 stars">${[0,1,2].map(i=>`<span style="animation-delay:${.6+i*.25}s">${i<n?'★':'<i>★</i>'}</span>`).join('')}</div>`;
 const worldOf=i=>WORLDS.filter(w=>w[0]<=i+1).length;
+// the level map shows the main game, or Hard Mode's 100 levels when it's switched on
 function drawLvls(){
-  const P=prof();let html='';
-  LEVELS.forEach((L,i)=>{
-    const wd=WORLDS.find(w=>w[0]===i+1);if(wd)html+=`<h3 class="wh">World ${WORLDS.indexOf(wd)+1} · ${wd[1]}</h3>`;
-    const b=P.best[i];
-    html+=`<button class="lv${b?' won':''}${i===lvl?' cur':''}${L.boss?' boss':''}" data-i="${i}"${i>P.unlocked?' disabled':''} aria-label="Level ${i+1}${L.boss?', boss':''}${L.sd?', sudden death':''}${b?', '+b.s+' stars':''}">${L.sd?'<i class="skull">💀</i>':''}${i+1}${b?`<small>${'★'.repeat(b.s)}${'☆'.repeat(3-b.s)}</small>`:''}</button>`;
-  });
+  const P=prof(),hard=isHard(),[a,z]=hard?[NORMAL,LEVELS.length]:[0,NORMAL],open=hard?NORMAL+(P.hunlocked||0):P.unlocked;let html='';
+  for(let i=a;i<z;i++){
+    const L=LEVELS[i],wd=WORLDS.find(w=>w[0]===i+1);
+    if(wd)html+=hard?`<h3 class="wh">💀 Hard mode</h3>`:`<h3 class="wh">World ${WORLDS.indexOf(wd)+1} · ${wd[1]}</h3>`;
+    const b=P.best[i],num=hard?i-NORMAL+1:i+1;
+    html+=`<button class="lv${b?' won':''}${i===lvl?' cur':''}${L.boss?' boss':''}" data-i="${i}"${i>open?' disabled':''} aria-label="${lvName(i)}${L.boss?', boss':''}${L.sd?', sudden death':''}${b?', '+b.s+' stars':''}">${L.sd?'<i class="skull">💀</i>':''}${num}${b?`<small>${'★'.repeat(b.s)}${'☆'.repeat(3-b.s)}</small>`:''}</button>`;
+  }
   $('#lvls').innerHTML=html;
 }
+// stars in the mode being played, out of the most possible
+function modeStars(){const P=prof(),h=isHard();let s=0,c=0;for(const [k,b] of Object.entries(P.best))if((+k>=NORMAL)===h)s+=b.s;c=(h?LEVELS.length-NORMAL:NORMAL)*3;return[s,c]}
 // screens: name · map · brief · win · lose
 function showOver(m,why){
   if(m==='map')daily=false;
-  mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&lvl===LEVELS.length-1;
+  mode=m;const L=curL(),n=lvl+1,o=$('#over'),last=!daily&&(lvl===NORMAL-1||lvl===LEVELS.length-1),hardLast=lvl===LEVELS.length-1;
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
     text=S.current&&prof().pinBad?'Your code has changed. Tap your name at the top, type your name and your new code.':'Cut the wires. Beat the clock.';
     go='▶ PLAY';
-    // your level, stars and your code (needed to play as you on another device)
-    if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
-      chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)+(lbOn()&&P.pin&&!P.pinBad?chip(`🔑 ${P.pin}`):'')}}
+    // your level, stars and your code (needed to play as you on another device), and the Hard Mode switch
+    if(S.current){const P=prof(),[tot]=modeStars(),ok=beatAll(P),on=isHard();
+      chips=chip(lvName(nextLvl()))+chip(`★ ${tot}`)+(lbOn()&&P.pin&&!P.pinBad?chip(`🔑 ${P.pin}`):'');
+      top+=`<button class="cta hardbtn${on?' on':''}" id="hardBtn"${ok?'':' aria-disabled="true"'}>${ok?(on?'💀 HARD MODE: ON':'💀 HARD MODE'):'🔒 HARD MODE'}</button>`}}
   // name screen: just your name and PLAY
   if(m==='name'){top='<div class="logo">DEFUSAL</div>';go='PLAY';$('#name').value='';$('#pin').value='';$('#pin').hidden=true}
-  if(m==='map'){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
-    top=kick(`★ ${tot} / ${LEVELS.length*3}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ Level ${Math.min(P.unlocked,LEVELS.length-1)+1}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
-  if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
+  if(m==='map'){const [tot,max]=modeStars();
+    top=kick(`${isHard()?'💀 Hard mode · ':''}★ ${tot} / ${max}`)+`<div class="maptop"><button class="cta" id="nextLv">▶ ${lvName(nextLvl())}</button><button class="cta dly" id="dly">📅 Daily bomb</button></div>`;title='Levels';drawLvls()}
+  if(m==='brief'){top=kick(daily?`📅 ${prettyDay(L.daily)}`:lvl>=NORMAL?`${L.boss?'Boss · ':''}💀 ${lvName(lvl)}`:`${L.boss?'Boss · ':''}World ${worldOf(lvl)} · Level ${n}`);title=L.t;text=L.intro;
     chips=chip('⏱ '+fmt(L.time))+(L.sd?chip('💀 SUDDEN DEATH','hot'):chip(`✖ −${L.pen}s`))+(L.hide?chip('👁 MEMORY'):'')
       +(L.chain?chip('🔗 IN ORDER'):'')+(L.shuffle?chip('🔀 SHUFFLE'):'')+(L.decoy?chip('🎭 DECOY'):'');go='PLAY'}
-  if(m==='win'){const r=G.result;top=kick(daily?'Daily bomb defused':last?'Grandmaster':`Level ${n} cleared`)+starHTML(r.stars);
+  if(m==='win'){const r=G.result;top=kick(daily?'Daily bomb defused':last?(hardLast?'Hard Mode master':'Legend'):`${lvName(lvl)} cleared`)+starHTML(r.stars);
     title=last?`You did it, ${S.current}!`:`${pick(['Nice work','Clean job','Steady hands','Defused'])}, ${S.current}`;
-    text=last?`All ${LEVELS.length} levels defused.`:'';
-    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=daily?'TODAY’S BOARD':last?'ALL LEVELS':`NEXT ▶ LEVEL ${n+1}`}
-  if(m==='lose'){lastWhy=why;top=kick(daily?'Daily bomb':`Level ${n}`);title='BOOM';text=why;go='RETRY'}
+    text=last?(hardLast?`All ${LEVELS.length-NORMAL} Hard Mode levels defused.`:`All ${NORMAL} levels defused. Hard Mode is unlocked.`):'';
+    chips=chip('⏱ '+fmtMs(r.ms),'xl')+chip('✖ '+G.strikes)+(r.beat?chip('NEW BEST','hot'):'');go=daily?'TODAY’S BOARD':last?'ALL LEVELS':`NEXT ▶ ${lvName(lvl+1).toUpperCase()}`}
+  if(m==='lose'){lastWhy=why;top=kick(daily?'Daily bomb':lvName(lvl));title='BOOM';text=why;go='RETRY'}
   if(m==='board'){top=kick('🏆 Top 50');title='Leaderboard';go='BACK'}
   o.classList.toggle('lost',m==='lose');
   $('#nameRow').hidden=m!=='name';$('#lvls').hidden=m!=='map';$('#board').hidden=m!=='board';$('#btabs').hidden=m!=='board';$('#lvpick').hidden=m!=='board'||boardTab!=='fast';
@@ -1050,16 +1123,20 @@ const toBrief=i=>{daily=false;lvl=i;preview();showOver('brief')};
 function openDaily(){daily=true;DAILY=buildDaily(todayKey());preview();showOver('brief')}
 $('#oTop').onclick=e=>{
   if(e.target.closest('#dly')){audioOn();SFX.click(1400);openDaily()}
-  if(e.target.closest('#nextLv')){audioOn();SFX.click(1400);toBrief(Math.min(prof().unlocked,LEVELS.length-1))}
+  if(e.target.closest('#nextLv')){audioOn();SFX.click(1400);toBrief(nextLvl())}
+  // Hard Mode switch: locked until every normal level is beaten
+  if(e.target.closest('#hardBtn')){audioOn();const P=prof();
+    if(!beatAll(P)){SFX.click(500);$('#oText').textContent=`Beat all ${NORMAL} levels to unlock Hard Mode.`;return}
+    SFX.thunk();P.hard=!P.hard;save();showOver('title')}
 };
 $('#go').onclick=()=>{
   audioOn();SFX.click(1400);
   if(mode==='name'){nameSubmit();return}
-  if(mode==='map'){toBrief(Math.min(prof().unlocked,LEVELS.length-1));return}
-  if(mode==='title'){if(S.current)toBrief(Math.min(prof().unlocked,LEVELS.length-1));else showOver('name');return}
+  if(mode==='map'){toBrief(nextLvl());return}
+  if(mode==='title'){if(S.current)toBrief(nextLvl());else showOver('name');return}
   if(mode==='board'){goBack();return}
   if(mode==='win'&&daily){boardOrigin=snap();boardTab='daily';showOver('board');return}
-  if(mode==='win'){if(lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
+  if(mode==='win'){if(lvl!==NORMAL-1&&lvl<LEVELS.length-1)toBrief(lvl+1);else showOver('map');return}
   start();
 };
 // name screen: type your name and PLAY.
@@ -1069,7 +1146,7 @@ $('#go').onclick=()=>{
 function nameSubmit(){
   const v=$('#name').value.trim().slice(0,20),code=$('#pin').value.trim(),msg=t=>{$('#oText').textContent=t};
   if(!v){$('#name').focus();return}
-  const go=()=>toBrief(Math.min(prof().unlocked,LEVELS.length-1)),g=$('#go');
+  const go=()=>toBrief(nextLvl()),g=$('#go');
   const mine=S.players[v],own=mine&&!mine.pinBad&&Object.keys(mine.best||{}).length>0;
   const local=()=>{S.current=v;prof();save();syncSave();go()};
   if(own&&!code){local();return}
@@ -1135,7 +1212,7 @@ $('#back').onclick=()=>{audioOn();SFX.click(1000);goBack()};
 // ↻ mid-level: throw this attempt away and start the same level again
 $('#me').onclick=()=>{audioOn();SFX.click(1400);nameOrigin=snap();showOver('name')};
 $('#restart').onclick=()=>{audioOn();SFX.click(1200);if(G&&!G.over){G.over=true;cancelAnimationFrame(raf);holdHum(false)}start()};
-$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardOrigin=snap();boardLvl=lvl;boardTab='all';showOver('board')};
+$('#trophy').onclick=()=>{audioOn();SFX.click(1400);boardOrigin=snap();boardLvl=Math.min(lvl,NORMAL-1);boardTab='all';showOver('board')};
 
 /* ---------- explosion ---------- */
 const FX={P:[],rings:[],burn:false,raf:0,timers:[],frame:0};
@@ -1519,11 +1596,11 @@ $('#plate').onclick=e=>{
 };
 
 /* start: name screen for new players, otherwise the next level's briefing */
-if(S.current)lvl=Math.min(prof().unlocked,LEVELS.length-1);
+if(S.current)lvl=nextLvl();
 // reloading the page while the leaderboard was open goes straight back to it (Overall tab); read this before any screen is shown
 let wasBoard=false;try{wasBoard=sessionStorage.getItem('defusal.screen')==='board'}catch(e){}
 preview();showOver('title');submitScore();submitTimes();submitDaily();syncSave().then(()=>{if(mode==='map')drawLvls()});
-if(wasBoard&&S.current&&lbOn()){boardOrigin=null;boardLvl=lvl;boardTab='all';showOver('board')}
+if(wasBoard&&S.current&&lbOn()){boardOrigin=null;boardLvl=Math.min(lvl,NORMAL-1);boardTab='all';showOver('board')}
 // mute button
 const drawMute=()=>{const b=$('#mute');b.textContent=S.muted?'🔇':'🔊';b.setAttribute('aria-label',S.muted?'Sound off':'Sound on')};
 $('#mute').onclick=()=>{S.muted=!S.muted;save();if(master)master.gain.value=S.muted?0:1;else audioOn();drawMute();SFX.click(1400)};drawMute();

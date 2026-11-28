@@ -1,7 +1,7 @@
 -- Defusal online leaderboard. Run this in Supabase → SQL Editor → New query → Run.
 -- Safe to run again: it keeps existing scores and only adds or updates what's needed.
 -- The game's public key can only call the functions below; the tables themselves stay locked.
--- The game has 150 levels (450 stars).
+-- The main game has 300 levels (900 stars). Hard Mode isn't on the leaderboard.
 
 -- ── Saves and linked devices (created first: the leaderboard functions below read player_links) ──
 -- players: each player's progress backed up online, protected by a 4-digit code used with their name.
@@ -33,9 +33,9 @@ create table if not exists public.scores (
 alter table public.scores add column if not exists total_ms bigint check (total_ms >= 0);
 -- level and star limits follow the number of levels in the game
 alter table public.scores drop constraint if exists scores_levels_check;
-alter table public.scores add  constraint scores_levels_check check (levels between 0 and 150);
+alter table public.scores add  constraint scores_levels_check check (levels between 0 and 300);
 alter table public.scores drop constraint if exists scores_stars_check;
-alter table public.scores add  constraint scores_stars_check  check (stars between 0 and 450);
+alter table public.scores add  constraint scores_stars_check  check (stars between 0 and 900);
 alter table public.scores enable row level security;   -- no policies: no direct reads or writes
 
 -- a player's name, as the database knows it. Names change only through rename_player; scores, times and
@@ -52,7 +52,7 @@ $$;
 create or replace function public.submit_score(p_id uuid, p_name text, p_levels int, p_stars int, p_total_ms bigint)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if p_levels < 1 or p_levels > 150 or p_stars < p_levels or p_stars > p_levels * 3
+  if p_levels < 1 or p_levels > 300 or p_stars < p_levels or p_stars > p_levels * 3
      or p_total_ms < p_levels * 1000 or p_total_ms > p_levels * 300000 then
     raise exception 'invalid score';
   end if;
@@ -73,7 +73,7 @@ end $$;
 create or replace function public.submit_score(p_id uuid, p_name text, p_levels int, p_stars int)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if p_levels < 1 or p_levels > 150 or p_stars < p_levels or p_stars > p_levels * 3 then
+  if p_levels < 1 or p_levels > 300 or p_stars < p_levels or p_stars > p_levels * 3 then
     raise exception 'invalid score';
   end if;
   insert into scores (player_id, name, levels, stars)
@@ -120,14 +120,14 @@ create table if not exists public.level_times (
   primary key (player_id, level)
 );
 alter table public.level_times drop constraint if exists level_times_level_check;
-alter table public.level_times add  constraint level_times_level_check check (level between 1 and 150);
+alter table public.level_times add  constraint level_times_level_check check (level between 1 and 300);
 alter table public.level_times enable row level security;   -- no policies: no direct reads or writes
 
 -- save a time; only ever keeps the player's fastest
 create or replace function public.submit_time(p_id uuid, p_name text, p_level int, p_ms int)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if p_level < 1 or p_level > 150 or p_ms < 1000 or p_ms > 300000 then
+  if p_level < 1 or p_level > 300 or p_ms < 1000 or p_ms > 300000 then
     raise exception 'invalid time';
   end if;
   insert into level_times (player_id, level, name, ms)
@@ -326,7 +326,7 @@ begin
   insert into players (player_id, name, pin, progress)
   select s.player_id, s.name, lpad(floor(random() * 10000)::int::text, 4, '0'),
     jsonb_build_object(
-      'unlocked', least(149, coalesce((select max(t.level) from level_times t where t.player_id = s.player_id), s.levels)),
+      'unlocked', least(299, coalesce((select max(t.level) from level_times t where t.player_id = s.player_id), s.levels)),
       'best', coalesce((select jsonb_object_agg((t.level - 1)::text, jsonb_build_object('s', 1, 'ms', t.ms))
                         from level_times t where t.player_id = s.player_id), '{}'::jsonb))
   from scores s where s.player_id = sid

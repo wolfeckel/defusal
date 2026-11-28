@@ -1,6 +1,6 @@
 # Defusal
 
-A mobile-style bomb-defusal game with 150 levels across 11 worlds, plus a Daily bomb (one shared device per day with its own fastest-time board). Play it at https://wolfeckel.github.io/defusal/
+A mobile-style bomb-defusal game with 300 levels across 17 worlds, a 100-level Hard Mode (unlocked by beating all 300), plus a Daily bomb (one shared device per day with its own fastest-time board). Play it at https://wolfeckel.github.io/defusal/
 
 The whole game is in `index.html`: inline CSS and JS, with every sound synthesised by Web Audio (no audio files). External services: Google Fonts, and optionally Supabase for the online leaderboard.
 
