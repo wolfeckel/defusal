@@ -278,7 +278,9 @@ returns table (out_id uuid, out_progress jsonb)
 language plpgsql security definer set search_path = public as $$
 declare r public.players;
 begin
-  select * into r from players p where lower(p.name) = lower(trim(p_name)) and p.pin = p_pin order by p.updated_at desc limit 1;
+  select * into r from players p
+  where lower(p.name) = lower(trim(p_name)) and p.pin = p_pin and p.player_id not in (select old_id from player_links)
+  order by coalesce((p.progress->>'unlocked')::int, 0) desc, p.updated_at desc limit 1;
   if not found then raise exception 'no match'; end if;
   if p_old_id is not null and p_old_id <> r.player_id then
     insert into player_links (old_id, new_id) values (p_old_id, r.player_id)
