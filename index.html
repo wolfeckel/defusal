@@ -1007,8 +1007,8 @@ function showOver(m,why){
   let top='',title='',text='',chips='',go='',link='';
   // title: a floating bomb with a ticking clock; PLAY continues (or asks a new player's name), plus the Daily bomb
   if(m==='title'){top=`<div class="tbomb"><span class="tled"></span><div class="logo">DEFUSAL</div><div class="tclock" id="tclock">0:10</div><div class="twires"><i style="--c:#e8382e"></i><i style="--c:#2f6fe0"></i><i style="--c:#f2c230"></i></div></div>`;
-    text=S.current&&prof().pinBad?'Your code has changed. Tap Change name, type your name and your new code.':'Cut the wires. Beat the clock.';
-    go='▶ PLAY';link=S.current?'Change name':'';
+    text=S.current&&prof().pinBad?'Your code has changed. Tap your name at the top, type your name and your new code.':'Cut the wires. Beat the clock.';
+    go='▶ PLAY';
     // your level, stars and your code (needed to play as you on another device)
     if(S.current){const P=prof(),tot=Object.values(P.best).reduce((a,b)=>a+b.s,0);
       chips=chip(`Level ${Math.min(P.unlocked,LEVELS.length-1)+1}`)+chip(`★ ${tot}`)+(lbOn()&&P.pin&&!P.pinBad?chip(`🔑 ${P.pin}`):'')}}
