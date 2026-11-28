@@ -292,10 +292,14 @@ create or replace function public.name_taken(p_name text)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)));
 $$;
--- the same, ignoring the asking device's own player (an empty save it made by mistake shouldn't hide the real one)
+-- is this name already someone else's on the board or in the saves? (ignores the asking device's own player,
+-- and players linked into another). The game then asks for that player's code.
 create or replace function public.name_taken(p_name text, p_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)) and p.player_id is distinct from p_id);
+  select exists (select 1 from players p where lower(p.name) = lower(trim(p_name)) and p.player_id is distinct from p_id
+                   and p.player_id not in (select old_id from player_links))
+      or exists (select 1 from scores s where lower(s.name) = lower(trim(p_name)) and s.player_id is distinct from p_id
+                   and s.player_id not in (select old_id from player_links));
 $$;
 
 -- log in by name: your name is your player. Finds the player with that name (most progress wins), builds an
@@ -335,8 +339,8 @@ begin
 end $$;
 
 -- ── Access: the public key may call these functions and nothing else ─────────
-revoke all on function public.login_player(text, uuid) from public;
-grant execute on function public.login_player(text, uuid) to anon, authenticated;
+-- logging in by name alone is switched off: a name on the board needs its code (claim_player)
+revoke all on function public.login_player(text, uuid) from public, anon, authenticated;
 revoke all on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text), public.player_name(uuid, text) from public;
 grant execute on function public.name_taken(text), public.name_taken(text, uuid), public.rename_player(uuid, text, text) to anon, authenticated;
 revoke all on function
